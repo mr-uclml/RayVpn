@@ -184,7 +184,9 @@ public final class ConfigSync {
         List<Profile> parsed = new ArrayList<>();
         if (body != null && !body.isEmpty()) {
             try {
-                parsed = ShareLinkParser.parseSubscription(body, CONFIG_URL);
+                ShareLinkParser.Report report = ShareLinkParser.parseSubscriptionReport(body, CONFIG_URL);
+                parsed = report.profiles;
+                outcome.skipped = report.skipped;
             } catch (Exception e) {
                 outcome.error = e.getMessage() == null ? "لیست خوانده نشد" : e.getMessage();
                 return outcome;
@@ -247,6 +249,7 @@ public final class ConfigSync {
         intent.putExtra("available", outcome.available);
         intent.putExtra("manual", outcome.manual);
         intent.putExtra("count", outcome.count);
+        intent.putExtra("skipped", outcome.skipped);
         intent.putExtra("error", outcome.error == null ? "" : outcome.error);
         intent.putExtra("removedActive", outcome.removedActive);
         app.sendBroadcast(intent);
@@ -352,6 +355,7 @@ public final class ConfigSync {
         boolean manual;
         boolean removedActive;
         int count;
+        int skipped;
         String error;
         String commit = "";
     }
