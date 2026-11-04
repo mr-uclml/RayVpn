@@ -262,6 +262,18 @@
                 android:text="سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه"
                 android:textColor="@color/muted"
                 android:textSize="12.5sp" />
+
+            <!-- shown only while connected: measures the delay through the running tunnel -->
+            <TextView
+                android:id="@+id/pingBtn"
+                style="@style/ModeChip"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginTop="10dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="پینگ"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- ── connection modes (the only choice the user sees) ── -->

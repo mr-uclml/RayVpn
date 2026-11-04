@@ -58,6 +58,9 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     private Handler workerHandler;
     private ParcelFileDescriptor tun;
     private CoreController core;
+    /** Guards every call on {@link #core}, so a ping can never race a start or stop. */
+    private final Object coreLock = new Object();
+    private static final String PING_URL = "https://www.gstatic.com/generate_204";
     private String tunError = "";
     private static volatile VpnTunnelService running;
 
@@ -170,9 +173,11 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             tun = pfd;
             int fd = pfd.getFd();
             if (fd < 0) throw new IllegalStateException("descriptor تونل نامعتبر است");
-            if (core == null) core = Libv2ray.newCoreController(this);
-            if (core.getIsRunning()) core.stopLoop();
-            core.startLoop(config, fd);
+            synchronized (coreLock) {
+                if (core == null) core = Libv2ray.newCoreController(this);
+                if (core.getIsRunning()) core.stopLoop();
+                core.startLoop(config, fd);
+            }
             setState(STATE_CONNECTED, "در حال دریافت IP…", profile.id);
             updateNotification("متصل", "در حال دریافت IP…", true);
             startExitLookup(mine);
@@ -180,7 +185,9 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             String msg = e.getMessage() == null ? e.toString() : e.getMessage();
             log("خطا: " + msg);
             try {
-                if (core != null && core.getIsRunning()) core.stopLoop();
+                synchronized (coreLock) {
+                    if (core != null && core.getIsRunning()) core.stopLoop();
+                }
             } catch (Exception ignored) {
             }
             closeTun();
@@ -267,12 +274,14 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     private void stopTunnel(String message) {
         session.incrementAndGet();
-        try {
-            if (core != null && core.getIsRunning()) core.stopLoop();
-        } catch (Exception e) {
-            log("stop: " + e.getMessage());
+        synchronized (coreLock) {
+            try {
+                if (core != null && core.getIsRunning()) core.stopLoop();
+            } catch (Exception e) {
+                log("stop: " + e.getMessage());
+            }
+            core = null;
         }
-        core = null;
         closeTun();
         exitIp = "";
         exitCountry = "";
@@ -326,6 +335,28 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     public long onEmitStatus(long code, String msg) {
         log(msg == null ? "" : msg);
         return 0;
+    }
+
+    /**
+     * Round-trip delay through the tunnel that is running right now, in ms.
+     * Returns -1 when nothing is connected or the probe gets no answer. Blocking: call off the UI thread.
+     */
+    public static long measureActivePing() {
+        VpnTunnelService live = running;
+        if (live == null) return -1L;
+        return live.pingThroughTunnel();
+    }
+
+    private long pingThroughTunnel() {
+        synchronized (coreLock) {
+            try {
+                if (core == null || !core.getIsRunning()) return -1L;
+                long ms = core.measureDelay(PING_URL);
+                return ms < 0 ? -1L : ms;
+            } catch (Throwable e) {
+                return -1L;
+            }
+        }
     }
 
     public static void requestStop(android.content.Context context) {

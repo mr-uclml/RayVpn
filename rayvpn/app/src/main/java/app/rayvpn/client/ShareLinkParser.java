@@ -23,6 +23,30 @@ public final class ShareLinkParser {
         public ParseException(String message) { super(message); }
     }
 
+    /** A subscription read result: usable profiles plus how many broken entries were skipped. */
+    public static final class Report {
+        public final List<Profile> profiles;
+        public final int skipped;
+        public final String firstError;
+
+        Report(List<Profile> profiles, int skipped, String firstError) {
+            this.profiles = profiles;
+            this.skipped = skipped;
+            this.firstError = firstError == null ? "" : firstError;
+        }
+    }
+
+    /** Collects skipped entries while parsing one text. */
+    private static final class Ctx {
+        int skipped;
+        String firstError = "";
+
+        void skip(String why) {
+            skipped++;
+            if (firstError.isEmpty()) firstError = why == null ? "لینک خراب" : why;
+        }
+    }
+
     public static boolean isHttpUrl(String text) {
         String t = clean(text);
         if (t.indexOf('\n') >= 0 || t.indexOf(' ') >= 0) return false;
@@ -32,44 +56,63 @@ public final class ShareLinkParser {
     }
 
     public static List<Profile> parseText(String text) throws ParseException {
+        return parseText(text, new Ctx());
+    }
+
+    private static List<Profile> parseText(String text, Ctx ctx) throws ParseException {
         String cleaned = clean(text);
         if (cleaned.isEmpty()) throw new ParseException("متنی وارد نشده");
         if (cleaned.startsWith("{")) return parseJson(cleaned);
-        List<Profile> links = extractLinks(cleaned);
+        List<Profile> links = extractLinks(cleaned, ctx);
         if (!links.isEmpty()) return links;
         String decoded = tryBase64(cleaned);
         if (decoded != null && !decoded.equals(cleaned)) {
             if (decoded.trim().startsWith("{")) return parseJson(decoded.trim());
-            links = extractLinks(decoded);
+            links = extractLinks(decoded, ctx);
             if (!links.isEmpty()) return links;
             if (decoded.contains("proxies:")) return parseClash(decoded);
         }
         if (cleaned.contains("proxies:")) return parseClash(cleaned);
+        if (!ctx.firstError.isEmpty()) throw new ParseException(ctx.firstError);
         throw new ParseException("لینک قابل‌خواندن پیدا نشد. vless / vmess / trojan / ss یا JSON یا اشتراک را بچسبانید.");
     }
 
     public static List<Profile> parseSubscription(String body, String sourceUrl) throws ParseException {
+        return parseSubscriptionReport(body, sourceUrl).profiles;
+    }
+
+    /**
+     * Reads a whole subscription. A broken entry is skipped and counted; only a body
+     * with no usable entry at all is an error, so one bad line never drops the list.
+     */
+    public static Report parseSubscriptionReport(String body, String sourceUrl) throws ParseException {
         String text = body == null ? "" : body.trim();
         if (text.isEmpty()) throw new ParseException("پاسخ اشتراک خالی بود");
         String low = text.toLowerCase(Locale.US);
         if (low.contains("<html") || low.contains("<!doctype")) {
             throw new ParseException("سرور به‌جای لیست کانفیگ یک صفحهٔ وب برگرداند");
         }
+        Ctx ctx = new Ctx();
         try {
-            List<Profile> list = parseText(text);
+            List<Profile> list = parseText(text, ctx);
             for (Profile p : list) {
                 if (p.sourceLink == null) p.sourceLink = "";
             }
-            return list;
+            return new Report(list, ctx.skipped, ctx.firstError);
         } catch (ParseException first) {
             String decoded = tryBase64(text.replace("\n", "").replace("\r", ""));
             if (decoded != null) {
+                Ctx retry = new Ctx();
                 try {
-                    return parseText(decoded);
+                    List<Profile> list = parseText(decoded, retry);
+                    for (Profile p : list) {
+                        if (p.sourceLink == null) p.sourceLink = "";
+                    }
+                    return new Report(list, retry.skipped, retry.firstError);
                 } catch (ParseException ignored) {
                 }
             }
-            throw new ParseException(first.getMessage() + (sourceUrl == null ? "" : ""));
+            throw new ParseException(first.getMessage());
         }
     }
 
@@ -110,68 +153,79 @@ public final class ShareLinkParser {
     private static List<Profile> parseSingBox(JSONArray outs) throws Exception {
         List<Profile> list = new ArrayList<>();
         for (int i = 0; i < outs.length(); i++) {
-            JSONObject o = outs.optJSONObject(i);
-            if (o == null) continue;
-            String type = o.optString("type", "").toLowerCase(Locale.US);
-            if (type.equals("direct") || type.equals("block") || type.equals("dns") || type.equals("selector")
-                    || type.equals("urltest") || type.isEmpty()) continue;
-            if (!o.has("server") && !o.has("server_port")) continue;
-            Profile p = new Profile();
-            p.id = UUID.randomUUID().toString();
-            p.addedAt = System.currentTimeMillis();
-            p.name = o.optString("tag", type);
-            p.protocol = type.equals("shadowsocks") ? "shadowsocks" : type;
-            if (type.equals("hysteria2")) p.protocol = "hysteria";
-            p.address = o.optString("server");
-            p.port = o.optInt("server_port", o.optInt("port"));
-            p.user = first(o.optString("uuid"), o.optString("password"), o.optString("auth"));
-            p.method = first(o.optString("method"), o.optString("security"));
-            p.flow = o.optString("flow");
-            JSONObject tls = o.optJSONObject("tls");
-            if (tls != null && tls.optBoolean("enabled", true)) {
-                p.security = "tls";
-                p.sni = tls.optString("server_name");
-                p.allowInsecure = tls.optBoolean("insecure");
-                JSONObject utls = tls.optJSONObject("utls");
-                if (utls != null) p.fingerprint = utls.optString("fingerprint");
-                JSONObject reality = tls.optJSONObject("reality");
-                if (reality != null && reality.optBoolean("enabled", true)) {
-                    p.security = "reality";
-                    p.publicKey = reality.optString("public_key");
-                    p.shortId = reality.optString("short_id");
-                }
-                JSONArray alpn = tls.optJSONArray("alpn");
-                if (alpn != null) {
-                    StringBuilder b = new StringBuilder();
-                    for (int a = 0; a < alpn.length(); a++) {
-                        if (b.length() > 0) b.append(",");
-                        b.append(alpn.optString(a));
+            try {
+                JSONObject o = outs.optJSONObject(i);
+                if (o == null) continue;
+                String type = o.optString("type", "").toLowerCase(Locale.US);
+                if (type.equals("direct") || type.equals("block") || type.equals("dns") || type.equals("selector")
+                        || type.equals("urltest") || type.isEmpty()) continue;
+                if (!o.has("server") && !o.has("server_port")) continue;
+                Profile p = new Profile();
+                p.id = UUID.randomUUID().toString();
+                p.addedAt = System.currentTimeMillis();
+                p.name = o.optString("tag", type);
+                p.protocol = type.equals("shadowsocks") ? "shadowsocks" : type;
+                if (type.equals("hysteria2")) p.protocol = "hysteria";
+                p.address = o.optString("server");
+                p.port = o.optInt("server_port", o.optInt("port"));
+                p.user = first(o.optString("uuid"), o.optString("password"), o.optString("auth"));
+                p.method = first(o.optString("method"), o.optString("security"));
+                p.flow = o.optString("flow");
+                JSONObject tls = o.optJSONObject("tls");
+                if (tls != null && tls.optBoolean("enabled", true)) {
+                    p.security = "tls";
+                    p.sni = tls.optString("server_name");
+                    p.allowInsecure = tls.optBoolean("insecure");
+                    JSONObject utls = tls.optJSONObject("utls");
+                    if (utls != null) p.fingerprint = utls.optString("fingerprint");
+                    JSONObject reality = tls.optJSONObject("reality");
+                    if (reality != null && reality.optBoolean("enabled", true)) {
+                        p.security = "reality";
+                        p.publicKey = reality.optString("public_key");
+                        p.shortId = reality.optString("short_id");
                     }
-                    p.alpn = b.toString();
+                    JSONArray alpn = tls.optJSONArray("alpn");
+                    if (alpn != null) {
+                        StringBuilder b = new StringBuilder();
+                        for (int a = 0; a < alpn.length(); a++) {
+                            if (b.length() > 0) b.append(",");
+                            b.append(alpn.optString(a));
+                        }
+                        p.alpn = b.toString();
+                    }
                 }
+                JSONObject transport = o.optJSONObject("transport");
+                if (transport != null) {
+                    p.network = transport.optString("type", "tcp");
+                    p.path = transport.optString("path");
+                    p.serviceName = transport.optString("service_name");
+                    JSONObject headers = transport.optJSONObject("headers");
+                    if (headers != null) p.hostHeader = headers.optString("Host");
+                } else {
+                    p.network = "tcp";
+                }
+                if (p.name == null || p.name.isEmpty()) p.name = p.protocol + " " + p.address;
+                list.add(p);
+            } catch (RuntimeException broken) {
+                // one broken outbound must not drop the rest of the list
             }
-            JSONObject transport = o.optJSONObject("transport");
-            if (transport != null) {
-                p.network = transport.optString("type", "tcp");
-                p.path = transport.optString("path");
-                p.serviceName = transport.optString("service_name");
-                JSONObject headers = transport.optJSONObject("headers");
-                if (headers != null) p.hostHeader = headers.optString("Host");
-            } else {
-                p.network = "tcp";
-            }
-            if (p.name == null || p.name.isEmpty()) p.name = p.protocol + " " + p.address;
-            list.add(p);
         }
         if (list.isEmpty()) throw new ParseException("در JSON خروجی قابل‌استفاده‌ای نبود");
         return list;
     }
 
-    private static List<Profile> extractLinks(String text) throws ParseException {
+    /** Parses every link on its own: a broken one is counted and skipped, the rest are kept. */
+    private static List<Profile> extractLinks(String text, Ctx ctx) {
         List<Profile> list = new ArrayList<>();
         Matcher m = LINK.matcher(text);
         while (m.find()) {
-            list.add(parseOne(m.group()));
+            try {
+                list.add(parseOne(m.group()));
+            } catch (ParseException e) {
+                ctx.skip(e.getMessage());
+            } catch (RuntimeException e) {
+                ctx.skip("لینک خراب: " + e.getMessage());
+            }
         }
         return list;
     }
@@ -509,6 +563,7 @@ public final class ShareLinkParser {
 
     private static HostPort splitHostPort(String hostport) throws ParseException {
         String hp = hostport.trim();
+        while (hp.endsWith("/")) hp = hp.substring(0, hp.length() - 1);
         if (hp.startsWith("[")) {
             int end = hp.indexOf(']');
             if (end < 0) throw new ParseException("IPv6 نامعتبر است");

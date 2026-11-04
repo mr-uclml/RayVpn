@@ -65,6 +65,9 @@ public class MainActivity extends Activity {
     private TextView modeFast;
     private TextView modeBalance;
     private TextView modeBest;
+    private TextView pingBtn;
+    private boolean pingShown;
+    private boolean pinging;
 
     private boolean applying;
     private boolean askedNotif;
@@ -103,7 +106,11 @@ public class MainActivity extends Activity {
             boolean removed = intent.getBooleanExtra("removedActive", false);
             String error = intent.getStringExtra("error");
             if (removed) toast("سرور قبلی حذف شد");
-            else if (changed) toast(intent.getIntExtra("count", 0) + " سرور به‌روز شد");
+            else if (changed) {
+                int skipped = intent.getIntExtra("skipped", 0);
+                String note = skipped > 0 ? "، " + persianCount(skipped) + " خط خراب نادیده گرفته شد" : "";
+                toast(persianCount(intent.getIntExtra("count", 0)) + " سرور به‌روز شد" + note);
+            }
             else if (available) {
                 toast("آپدیت آمد. می‌توانی به‌روزرسانی کنی");
                 askNotify();
@@ -145,6 +152,7 @@ public class MainActivity extends Activity {
         modeFast = findViewById(R.id.modeFast);
         modeBalance = findViewById(R.id.modeBalance);
         modeBest = findViewById(R.id.modeBest);
+        pingBtn = findViewById(R.id.pingBtn);
 
         glow.setAlpha(0.7f);
         lastBtnBg = R.drawable.bg_connect;
@@ -159,6 +167,7 @@ public class MainActivity extends Activity {
         Ui.pressable(modeFast);
         Ui.pressable(modeBalance);
         Ui.pressable(modeBest);
+        Ui.pressable(pingBtn);
         root.post(new Runnable() {
             @Override public void run() { playEntrance(); }
         });
@@ -175,6 +184,12 @@ public class MainActivity extends Activity {
         modeFast.setOnClickListener(modeClick(ServerSelector.Mode.FAST));
         modeBalance.setOnClickListener(modeClick(ServerSelector.Mode.BALANCE));
         modeBest.setOnClickListener(modeClick(ServerSelector.Mode.BEST));
+        pingBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Ui.bounce(v);
+                onPingClicked();
+            }
+        });
     }
 
     private View.OnClickListener modeClick(final ServerSelector.Mode picked) {
@@ -306,6 +321,53 @@ public class MainActivity extends Activity {
         handleStatePulse(st);
         renderHero(st);
         renderModes(st);
+        renderPing(st);
+    }
+
+    /** Ping button is offered only while connected; it is hidden again as soon as the tunnel is down. */
+    private void renderPing(String st) {
+        boolean show = VpnTunnelService.STATE_CONNECTED.equals(st);
+        if (show == pingShown) return;
+        pingShown = show;
+        pingBtn.animate().cancel();
+        if (show) {
+            pingBtn.setText("پینگ");
+            pingBtn.setEnabled(true);
+            pingBtn.setVisibility(View.VISIBLE);
+            pingBtn.setAlpha(0f);
+            pingBtn.setTranslationY(Ui.dp(this, 6));
+            pingBtn.animate().alpha(1f).translationY(0f).setDuration(260).setInterpolator(Ui.EASE).start();
+        } else {
+            pingBtn.animate().alpha(0f).setDuration(160).setInterpolator(Ui.SOFT)
+                    .withEndAction(new Runnable() {
+                        @Override public void run() { pingBtn.setVisibility(View.GONE); }
+                    }).start();
+        }
+    }
+
+    /** Measures the delay through the running tunnel off the UI thread and shows the result on the button. */
+    private void onPingClicked() {
+        if (pinging || !VpnTunnelService.STATE_CONNECTED.equals(VpnTunnelService.state)) return;
+        pinging = true;
+        pingBtn.setEnabled(false);
+        pingBtn.setText("در حال سنجش…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final long ms = VpnTunnelService.measureActivePing();
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        pinging = false;
+                        pingBtn.setEnabled(true);
+                        if (ms < 0) {
+                            pingBtn.setText("بی‌پاسخ");
+                            toast("این اتصال جواب نداد");
+                        } else {
+                            pingBtn.setText(persianCount((int) ms) + " ms");
+                        }
+                    }
+                });
+            }
+        }, "rayvpn-ping").start();
     }
 
     /** Hero shows the mode while idle, the progress while connecting, and country + IP once connected. */
