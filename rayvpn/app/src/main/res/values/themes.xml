@@ -1,21 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RayVPN" parent="Theme.AppCompat.NoActionBar">
-        <item name="colorPrimary">#151C2E</item>
-        <item name="colorPrimaryDark">#0B1020</item>
-        <item name="colorAccent">#2EE6A6</item>
-        <item name="android:windowBackground">@color/bg</item>
-        <item name="android:statusBarColor">@color/bg</item>
-        <item name="android:navigationBarColor">@color/bg</item>
+
+    <style name="Theme.RayVPN" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_app</item>
+        <item name="android:colorPrimary">@color/bg</item>
+        <item name="android:colorPrimaryDark">@color/bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/accent_ghost</item>
+        <item name="android:colorEdgeEffect">@color/accent</item>
+        <item name="android:statusBarColor">@color/bg3</item>
+        <item name="android:navigationBarColor">@color/bg3</item>
         <item name="android:textColor">@color/text</item>
-        <item name="android:textColorHint">@color/muted</item>
-        <item name="buttonStyle">@style/Widget.Ray.Button</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:textColorHint">@color/muted_soft</item>
+        <item name="android:buttonStyle">@style/Widget.Ray.Button</item>
+        <item name="android:windowAnimationStyle">@style/Anim.Ray.Window</item>
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowActivityTransitions">true</item>
     </style>
 
-    <style name="Widget.Ray.Button" parent="Widget.AppCompat.Button">
+    <style name="Widget.Ray.Button" parent="android:Widget.Material.Button">
         <item name="android:backgroundTint">@null</item>
-        <item name="backgroundTint">@null</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:stateListAnimator">@null</item>
     </style>
+
+    <!-- window / activity transitions -->
+    <style name="Anim.Ray.Window" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/act_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/act_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/act_back_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/act_back_out</item>
+    </style>
+
 </resources>

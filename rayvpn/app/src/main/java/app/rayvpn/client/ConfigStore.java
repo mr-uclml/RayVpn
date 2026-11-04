@@ -231,7 +231,11 @@ public final class ConfigStore {
     }
 
     public synchronized void sortByPing() {
-        profiles.sort((a, b) -> Long.compare(pingRank(a.pingMs), pingRank(b.pingMs)));
+        java.util.Collections.sort(profiles, new java.util.Comparator<Profile>() {
+            @Override public int compare(Profile a, Profile b) {
+                return Long.compare(pingRank(a.pingMs), pingRank(b.pingMs));
+            }
+        });
         save();
     }
 
@@ -242,7 +246,9 @@ public final class ConfigStore {
     }
 
     public synchronized void delete(String id) {
-        profiles.removeIf(p -> id.equals(p.id));
+        for (int i = profiles.size() - 1; i >= 0; i--) {
+            if (id != null && id.equals(profiles.get(i).id)) profiles.remove(i);
+        }
         if (id.equals(selectedId)) {
             selectedId = profiles.isEmpty() ? "" : profiles.get(0).id;
         }

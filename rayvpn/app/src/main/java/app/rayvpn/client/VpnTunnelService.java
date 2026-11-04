@@ -245,7 +245,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     private void createChannel() {
         if (Build.VERSION.SDK_INT < 26) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL, "اتصال VPN", NotificationManager.IMPORTANCE_LOW);
+        NotificationChannel channel = new NotificationChannel(CHANNEL, "وضعیت اتصال", NotificationManager.IMPORTANCE_LOW);
         channel.setDescription("وضعیت تونل ری‌وی‌پی‌ان");
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) nm.createNotificationChannel(channel);
@@ -266,6 +266,10 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                 .setContentTitle(title)
                 .setContentText(text)
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setColor(0xFF35F0B0)
+                .setColorized(false)
                 .setContentIntent(content)
                 .addAction(new Notification.Action.Builder(0, "قطع", stopPi).build());
         if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
