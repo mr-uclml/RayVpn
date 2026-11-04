@@ -149,7 +149,7 @@
             android:paddingStart="14dp"
             android:paddingTop="15dp"
             android:paddingEnd="14dp"
-            android:paddingBottom="16dp">
+            android:paddingBottom="18dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -244,7 +244,7 @@
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="سروری انتخاب نشده"
+                android:text="حالت متعادل"
                 android:textColor="@color/text"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -253,172 +253,56 @@
                 android:id="@+id/detailText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="5dp"
                 android:ellipsize="end"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:lineSpacingExtra="2dp"
                 android:maxLines="2"
-                android:text="یک سرور را از فهرست انتخاب کن"
+                android:text="سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه"
                 android:textColor="@color/muted"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:id="@+id/metricsRow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/pingChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_ping"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:minWidth="86dp"
-                    android:paddingStart="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="6dp"
-                    android:text="پینگ —"
-                    android:textColor="@color/muted"
-                    android:textSize="11.5sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/qualityChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_ping"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:minWidth="76dp"
-                    android:paddingStart="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="6dp"
-                    android:text="کیفیت —"
-                    android:textColor="@color/muted"
-                    android:textSize="11.5sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/testConnBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_btn_ghost"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="تست همین اتصال"
-                android:textColor="@color/text"
-                android:textSize="12.5sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
+                android:textSize="12.5sp" />
         </LinearLayout>
 
-        <!-- ── actions ────────────────────────────────────────── -->
+        <!-- ── connection modes (the only choice the user sees) ── -->
         <LinearLayout
             android:id="@+id/actions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="14dp"
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/pingAllBtn"
+                android:id="@+id/modeFast"
+                style="@style/ModeChip"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_btn_primary"
-                android:clickable="true"
-                android:drawableStart="@drawable/ic_levels"
-                android:drawablePadding="8dp"
-                android:drawableTint="@color/accent_ink"
-                android:focusable="true"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:text="تست همه"
-                android:textColor="@color/accent_ink"
-                android:textSize="13.5sp"
-                android:textStyle="bold" />
-
-            <Space
-                android:layout_width="10dp"
-                android:layout_height="1dp" />
-
-            <FrameLayout
-                android:id="@+id/sortBtn"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_btn_ghost"
-                android:clickable="true"
-                android:focusable="true">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="مرتب‌سازی بر اساس سرعت"
-                    android:src="@drawable/ic_sort"
-                    android:tint="@color/text_dim" />
-            </FrameLayout>
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/hintText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:text="برای تست تک، انگشتت را روی یک سرور نگه دار"
-            android:textColor="@color/muted_soft"
-            android:textSize="10.5sp" />
-
-        <!-- ── server list ────────────────────────────────────── -->
-        <FrameLayout
-            android:id="@+id/listWrap"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="10dp"
-            android:layout_weight="1">
-
-            <ListView
-                android:id="@+id/list"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:divider="@android:color/transparent"
-                android:dividerHeight="8dp"
-                android:drawSelectorOnTop="true"
-                android:listSelector="@drawable/row_selector"
-                android:paddingBottom="6dp"
-                android:scrollbars="none" />
+                android:text="سریع" />
 
             <TextView
-                android:id="@+id/emptyText"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:drawableTop="@drawable/ic_levels"
-                android:drawablePadding="12dp"
-                android:drawableTint="@color/muted_soft"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:lineSpacingExtra="5dp"
-                android:text="در حال دریافت فهرست…"
-                android:textColor="@color/muted"
-                android:textSize="13sp" />
-        </FrameLayout>
+                android:id="@+id/modeBalance"
+                style="@style/ModeChip"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="متعادل" />
+
+            <TextView
+                android:id="@+id/modeBest"
+                style="@style/ModeChip"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="بهترین" />
+        </LinearLayout>
+
+        <!-- spacer keeps the card and modes at the top on tall screens -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
     </LinearLayout>
 </FrameLayout>

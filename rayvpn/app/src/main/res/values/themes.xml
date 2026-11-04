@@ -26,6 +26,18 @@
         <item name="android:stateListAnimator">@null</item>
     </style>
 
+    <!-- connection-mode button (fast / balance / best) -->
+    <style name="ModeChip">
+        <item name="android:background">@drawable/bg_btn_ghost</item>
+        <item name="android:textColor">@color/text_dim</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
     <!-- window / activity transitions -->
     <style name="Anim.Ray.Window" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/act_in</item>

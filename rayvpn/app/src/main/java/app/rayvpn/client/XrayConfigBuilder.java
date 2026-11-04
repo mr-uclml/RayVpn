@@ -9,7 +9,27 @@ import java.util.Locale;
 public final class XrayConfigBuilder {
     private XrayConfigBuilder() {}
 
+    /**
+     * Loopback SOCKS5 inbound protected by a random user/password. The app uses it
+     * from inside its own process (speed test, exit IP lookup); it is never exposed.
+     */
+    public static final class LocalSocks {
+        public final int port;
+        public final String user;
+        public final String pass;
+
+        public LocalSocks(int port, String user, String pass) {
+            this.port = port;
+            this.user = user;
+            this.pass = pass;
+        }
+    }
+
     public static String buildTunnel(Profile p) throws Exception {
+        return buildTunnel(p, null);
+    }
+
+    public static String buildTunnel(Profile p, LocalSocks socks) throws Exception {
         if (p == null) throw new IllegalArgumentException("کانفیگی انتخاب نشده");
         if ("raw".equals(p.protocol)) {
             if (p.rawJson == null || p.rawJson.trim().isEmpty()) {
@@ -17,6 +37,10 @@ public final class XrayConfigBuilder {
             }
             JSONObject root = new JSONObject(p.rawJson);
             injectTun(root);
+            if (socks != null) {
+                JSONArray inbounds = root.getJSONArray("inbounds");
+                inbounds.put(socksInbound(socks, "api-in"));
+            }
             return root.toString();
         }
         JSONObject root = new JSONObject();
@@ -34,6 +58,7 @@ public final class XrayConfigBuilder {
 
         JSONArray inbounds = new JSONArray();
         inbounds.put(tunInbound());
+        if (socks != null) inbounds.put(socksInbound(socks, "api-in"));
         root.put("inbounds", inbounds);
 
         JSONArray outbounds = new JSONArray();
@@ -55,6 +80,14 @@ public final class XrayConfigBuilder {
         JSONObject routing = new JSONObject();
         routing.put("domainStrategy", "AsIs");
         JSONArray rules = new JSONArray();
+        if (socks != null) {
+            // the app's own lookups go through the tunnel, never direct
+            JSONObject apiRule = new JSONObject();
+            apiRule.put("type", "field");
+            apiRule.put("inboundTag", new JSONArray().put("api-in"));
+            apiRule.put("outboundTag", "proxy");
+            rules.put(apiRule);
+        }
         JSONObject dnsRule = new JSONObject();
         dnsRule.put("type", "field");
         dnsRule.put("inboundTag", new JSONArray().put("tun-in"));
@@ -78,6 +111,42 @@ public final class XrayConfigBuilder {
         rules.put(lan);
         routing.put("rules", rules);
         root.put("routing", routing);
+        return root.toString();
+    }
+
+    /**
+     * Short-lived core used before the tunnel exists: only a loopback SOCKS inbound
+     * plus the server outbound, so a speed test can run through this one config.
+     */
+    public static String buildProbe(Profile p, LocalSocks socks) throws Exception {
+        JSONObject root;
+        JSONArray inbounds = new JSONArray();
+        inbounds.put(socksInbound(socks, "probe-in"));
+        if ("raw".equals(p.protocol)) {
+            if (p.rawJson == null || p.rawJson.trim().isEmpty()) {
+                throw new IllegalArgumentException("JSON خام خالی است");
+            }
+            root = new JSONObject(p.rawJson);
+            root.put("inbounds", inbounds);
+            return root.toString();
+        }
+        root = new JSONObject();
+        JSONObject log = new JSONObject();
+        log.put("loglevel", "warning");
+        root.put("log", log);
+
+        JSONObject dns = new JSONObject();
+        dns.put("queryStrategy", "UseIPv4");
+        JSONArray servers = new JSONArray();
+        servers.put("https://1.1.1.1/dns-query");
+        servers.put("1.1.1.1");
+        dns.put("servers", servers);
+        root.put("dns", dns);
+
+        root.put("inbounds", inbounds);
+        JSONArray outs = new JSONArray();
+        outs.put(proxyOutbound(p));
+        root.put("outbounds", outs);
         return root.toString();
     }
 
@@ -131,6 +200,20 @@ public final class XrayConfigBuilder {
             log.put("loglevel", "warning");
             root.put("log", log);
         }
+    }
+
+    private static JSONObject socksInbound(LocalSocks s, String tag) throws JSONException {
+        JSONObject ib = new JSONObject();
+        ib.put("tag", tag);
+        ib.put("listen", "127.0.0.1");
+        ib.put("port", s.port);
+        ib.put("protocol", "socks");
+        JSONObject settings = new JSONObject();
+        settings.put("auth", "password");
+        settings.put("accounts", new JSONArray().put(new JSONObject().put("user", s.user).put("pass", s.pass)));
+        settings.put("udp", false);
+        ib.put("settings", settings);
+        return ib;
     }
 
     private static JSONObject tunInbound() throws JSONException {
