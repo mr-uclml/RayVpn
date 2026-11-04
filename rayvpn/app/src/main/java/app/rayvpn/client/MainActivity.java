@@ -101,6 +101,14 @@ public class MainActivity extends Activity {
     private ObjectAnimator spinAnim;
     private ObjectAnimator refreshAnim;
     private ObjectAnimator emptyAnim;
+    private TextView pingChip;
+    private TextView qualityChip;
+    private TextView testConnBtn;
+    private TextView hintText;
+    private View metricsRow;
+    private boolean testingActive;
+    private int pingTotal;
+    private int pingDone;
     private final java.util.Map<String, String> lastPingText = new java.util.HashMap<>();
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -144,6 +152,15 @@ public class MainActivity extends Activity {
         refreshBtn = findViewById(R.id.refreshBtn);
         refreshIcon = findViewById(R.id.refreshIcon);
         listWrap = findViewById(R.id.listWrap);
+        metricsRow = findViewById(R.id.metricsRow);
+        pingChip = findViewById(R.id.pingChip);
+        qualityChip = findViewById(R.id.qualityChip);
+        testConnBtn = findViewById(R.id.testConnBtn);
+        hintText = findViewById(R.id.hintText);
+        Ui.pressable(testConnBtn);
+        testConnBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { testActiveConnection(); }
+        });
 
         list.setSelector(R.drawable.row_selector);
         glow.setAlpha(0.7f);
@@ -183,6 +200,15 @@ public class MainActivity extends Activity {
                 if (position < 0 || position >= store.profiles.size()) return;
                 store.select(store.profiles.get(position).id);
                 render();
+            }
+        });
+        list.setOnItemLongClickListener(new android.widget.AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= store.profiles.size()) return false;
+                Ui.bounce(view);
+                testSingle(store.profiles.get(position));
+                return true;
             }
         });
     }
@@ -259,85 +285,161 @@ public class MainActivity extends Activity {
             return;
         }
         if (store.profiles.isEmpty()) {
-            toast("هنوز سروری نیست");
+            toast("هنوز سروری در فهرست نیست");
             return;
         }
         pinging = true;
         pingCancel = false;
         testingIds.clear();
         for (Profile p : store.profiles) {
-            if (p.id != null) testingIds.add(p.id);
+            if (p.id == null) continue;
+            testingIds.add(p.id);
+            p.pingMs = -2;
         }
-        pingProgress = "۰/" + store.profiles.size();
+        pingTotal = store.profiles.size();
+        pingDone = 0;
+        pingProgress = "";
         updatePingButton();
+        setHintVisible(false);
         adapter.notifyDataSetChanged();
+        render();
         final List<Profile> targets = new ArrayList<>(store.profiles);
+        new Thread(new Runnable() {
+            @Override public void run() { runAccurateTests(targets); }
+        }).start();
+    }
+
+    /**
+     * The number shown to the user always comes from a real request through the
+     * config itself (Xray core + HTTP 204). A silent TCP probe is used only to
+     * skip servers that provably cannot work, so a full run stays quick.
+     */
+    private void runAccurateTests(List<Profile> targets) {
+        for (int i = 0; i < targets.size(); i++) {
+            if (pingCancel) break;
+            final Profile p = targets.get(i);
+            if (needsTcpGate(p)) {
+                long tcp = tcpPing(p.address, p.port, 1300);
+                if (tcp < 0) {
+                    publishResult(p, -1L);
+                    continue;
+                }
+            }
+            long ms = realDelayBest(p, 1);
+            publishResult(p, ms);
+        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                boolean cancelled = pingCancel;
+                pinging = false;
+                pingCancel = false;
+                pingProgress = "";
+                testingIds.clear();
+                store.save();
+                setHintVisible(true);
+                render();
+                toast(cancelled ? "تست متوقف شد" : "تست همه تمام شد");
+            }
+        });
+    }
+
+    private void publishResult(final Profile p, final long ms) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                p.pingMs = ms;
+                if (p.id != null) testingIds.remove(p.id);
+                pingDone++;
+                pingProgress = pingDone + "/" + pingTotal;
+                adapter.notifyDataSetChanged();
+                updatePingButton();
+                updateHeroMetrics(store.selected());
+            }
+        });
+    }
+
+    /** Accurate test of one config only (long press on a row). */
+    private void testSingle(final Profile p) {
+        if (p == null || p.id == null) return;
+        if (pinging) {
+            toast("اول «تست همه» را تمام کن");
+            return;
+        }
+        if (testingIds.contains(p.id)) return;
+        final String label = p.name == null || p.name.isEmpty() ? p.address : p.name;
+        testingIds.add(p.id);
+        p.pingMs = -2;
+        adapter.notifyDataSetChanged();
+        updateHeroMetrics(store.selected());
+        toast("تست دقیق: " + label);
         new Thread(new Runnable() {
             @Override
             public void run() {
-                phaseTcp(targets);
-                phaseReal(targets);
+                final long ms = realDelayBest(p, 2);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        pinging = false;
-                        pingProgress = "";
-                        testingIds.clear();
+                        p.pingMs = ms;
+                        testingIds.remove(p.id);
                         store.save();
-                        render();
+                        adapter.notifyDataSetChanged();
+                        updateHeroMetrics(store.selected());
+                        toast(ms < 0 ? "بی‌پاسخ: " + label
+                                : label + " · " + ms + " ms · " + quality(ms));
                     }
                 });
             }
         }).start();
     }
 
-    private void phaseTcp(List<Profile> targets) {
-        ExecutorService pool = Executors.newFixedThreadPool(4);
-        final AtomicInteger done = new AtomicInteger();
-        List<Future<?>> jobs = new ArrayList<>();
-        for (int i = 0; i < targets.size(); i++) {
-            final Profile p = targets.get(i);
-            jobs.add(pool.submit(new Runnable() {
-                @Override
-                public void run() {
-                    if (pingCancel) return;
-                    final long ms = tcpPing(p.address, p.port, 1800);
-                    final int n = done.incrementAndGet();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (ms >= 0 && testingIds.contains(p.id)) p.pingMs = ms;
-                            pingProgress = n + "/" + targets.size();
-                            adapter.notifyDataSetChanged();
-                            updatePingButton();
-                        }
-                    });
-                }
-            }));
+    /** Tests only the config that is currently connected. */
+    private void testActiveConnection() {
+        if (testingActive) return;
+        Profile p = null;
+        String activeId = VpnTunnelService.activeId;
+        if (activeId != null && !activeId.isEmpty()) p = store.byId(activeId);
+        if (p == null) p = store.selected();
+        if (p == null) {
+            toast("سروری برای تست نیست");
+            return;
         }
-        for (Future<?> job : jobs) {
-            try { job.get(5, TimeUnit.SECONDS); } catch (Exception ignored) {}
-        }
-        pool.shutdownNow();
+        testingActive = true;
+        final Profile target = p;
+        if (target.id != null) testingIds.add(target.id);
+        target.pingMs = -2;
+        testConnBtn.setText("در حال تست…");
+        adapter.notifyDataSetChanged();
+        updateHeroMetrics(store.selected());
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final long ms = realDelayBest(target, 2);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        testingActive = false;
+                        target.pingMs = ms;
+                        if (target.id != null) testingIds.remove(target.id);
+                        store.save();
+                        testConnBtn.setText("تست همین اتصال");
+                        adapter.notifyDataSetChanged();
+                        updateHeroMetrics(target);
+                        toast(ms < 0 ? "این اتصال جواب نداد" : "کیفیت " + quality(ms) + " · " + ms + " ms");
+                    }
+                });
+            }
+        }).start();
     }
 
-    private void phaseReal(List<Profile> targets) {
-        for (int i = 0; i < targets.size(); i++) {
-            if (pingCancel) return;
-            final Profile p = targets.get(i);
-            final int n = i + 1;
-            final long real = realDelay(p);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    p.pingMs = real;
-                    if (p.id != null) testingIds.remove(p.id);
-                    pingProgress = "دقیق " + n + "/" + targets.size();
-                    adapter.notifyDataSetChanged();
-                    updatePingButton();
-                }
-            });
+    private long realDelayBest(Profile p, int tries) {
+        long best = -1;
+        for (int i = 0; i < tries; i++) {
+            long ms = realDelay(p);
+            if (ms >= 0 && (best < 0 || ms < best)) best = ms;
+            if (ms >= 0 && best >= 0) break;
         }
+        return best;
     }
 
     private long realDelay(Profile p) {
@@ -350,6 +452,31 @@ public class MainActivity extends Activity {
                 return -1L;
             }
         }
+    }
+
+    /** UDP transports cannot be probed with a TCP handshake. */
+    private static boolean needsTcpGate(Profile p) {
+        if (p == null) return false;
+        if ("hysteria".equalsIgnoreCase(p.protocol)) return false;
+        if ("kcp".equalsIgnoreCase(p.network)) return false;
+        if ("raw".equalsIgnoreCase(p.protocol)) return false;
+        return p.address != null && !p.address.isEmpty() && p.port > 0;
+    }
+
+    private static String quality(long ms) {
+        if (ms < 0) return "بی‌پاسخ";
+        if (ms < 120) return "عالی";
+        if (ms < 250) return "خوب";
+        if (ms < 450) return "متوسط";
+        return "کند";
+    }
+
+    private static int qualityColor(long ms) {
+        if (ms < 0) return C_DANGER;
+        if (ms < 120) return C_ACCENT;
+        if (ms < 250) return 0xFF6FE3C0;
+        if (ms < 450) return C_WARN;
+        return C_DANGER;
     }
 
     private static long tcpPing(String host, int port, int timeoutMs) {
@@ -375,14 +502,14 @@ public class MainActivity extends Activity {
             return;
         }
         boolean any = false;
-        for (Profile p : store.profiles) if (p.pingMs != -2) any = true;
+        for (Profile p : store.profiles) if (p.pingMs >= 0) any = true;
         if (!any) {
-            toast("اول پینگ همه را بزنید");
+            toast("اول «تست همه» را بزن تا سرعت‌ها مشخص شود");
             return;
         }
         store.sortByPing();
         render();
-        toast("از سریع‌ترین به کندترین");
+        toast("سریع‌ترین سرورها بالا آمدند");
     }
 
     private void onConnectClicked() {
@@ -393,7 +520,7 @@ public class MainActivity extends Activity {
         }
         Profile p = store.selected();
         if (p == null) {
-            toast("یک سرور از لیست انتخاب کنید");
+            toast("اول یک سرور را از فهرست انتخاب کن");
             return;
         }
         try {
@@ -446,7 +573,7 @@ public class MainActivity extends Activity {
 
         boolean empty = store.profiles.isEmpty();
         emptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
-        emptyText.setText("سروری دریافت نشد.\nدکمهٔ تازه‌سازی را بزنید.");
+        emptyText.setText("فهرستی نرسیده\nآیکون تازه‌سازی بالا را بزن");
         syncEmptyPulse(empty);
 
         Profile selected = store.selected();
@@ -455,9 +582,9 @@ public class MainActivity extends Activity {
         Ui.setTextSmooth(serverName, name);
 
         if (applying) Ui.setTextSmooth(versionText, "در حال به‌روزرسانی…");
-        else if (ConfigSync.updateAvailable) Ui.setTextSmooth(versionText, "آپدیت آماده است");
-        else if (empty) Ui.setTextSmooth(versionText, "لیست خالی است");
-        else Ui.setTextSmooth(versionText, persianCount(store.profiles.size()) + " سرور");
+        else if (ConfigSync.updateAvailable) Ui.setTextSmooth(versionText, "نسخهٔ تازه آماده است");
+        else if (empty) Ui.setTextSmooth(versionText, "فهرست خالی است");
+        else Ui.setTextSmooth(versionText, persianCount(store.profiles.size()) + " سرور آماده");
 
         setUpdateBarVisible(ConfigSync.updateAvailable);
         setRefreshSpinning(applying);
@@ -466,17 +593,21 @@ public class MainActivity extends Activity {
         String st = VpnTunnelService.state;
         updateStatusUi(st);
         handleStatePulse(st);
+        updateHeroMetrics(selected);
+        setRowVisible(testConnBtn, VpnTunnelService.STATE_CONNECTED.equals(st));
 
         if (VpnTunnelService.STATE_CONNECTED.equals(st)) {
-            Ui.setTextSmooth(detailText, VpnTunnelService.detail == null || VpnTunnelService.detail.isEmpty()
-                    ? "تونل روشن است" : VpnTunnelService.detail);
+            String base = VpnTunnelService.detail == null || VpnTunnelService.detail.isEmpty()
+                    ? "تونل روشن است" : VpnTunnelService.detail;
+            if (selected != null && selected.pingMs >= 0) base = base + "  ·  کیفیت " + quality(selected.pingMs);
+            Ui.setTextSmooth(detailText, base);
         } else if (VpnTunnelService.STATE_CONNECTING.equals(st)) {
             Ui.setTextSmooth(detailText, "در حال اتصال…");
         } else if (VpnTunnelService.STATE_ERROR.equals(st)) {
             Ui.setTextSmooth(detailText, VpnTunnelService.detail == null ? "اتصال برقرار نشد" : VpnTunnelService.detail);
         } else {
             if (selected != null) Ui.setTextSmooth(detailText, selected.subtitle() + pingSuffix(selected));
-            else Ui.setTextSmooth(detailText, "یک سرور را از لیست انتخاب کنید");
+            else Ui.setTextSmooth(detailText, "یک سرور را از فهرست انتخاب کن");
         }
     }
 
@@ -494,7 +625,7 @@ public class MainActivity extends Activity {
         int btnBg;
         int glowRes;
         if (connected) {
-            pillText = "متصل";
+            pillText = "وصل";
             pillColor = C_ACCENT;
             btnText = "قطع";
             btnColor = C_TEXT;
@@ -515,7 +646,7 @@ public class MainActivity extends Activity {
             btnBg = R.drawable.bg_connect;
             glowRes = R.drawable.bg_glow;
         } else {
-            pillText = "قطع";
+            pillText = "آماده";
             pillColor = C_MUTED;
             btnText = "اتصال";
             btnColor = C_INK;
@@ -714,6 +845,67 @@ public class MainActivity extends Activity {
         anim.start();
     }
 
+    private void updateHeroMetrics(Profile p) {
+        boolean testing = p != null && p.id != null && testingIds.contains(p.id);
+        boolean show = p != null && (testing || p.pingMs != -2);
+        setRowVisible(metricsRow, show);
+        if (!show) return;
+
+        String pingText;
+        String qualityText;
+        int color;
+        if (testing || p.pingMs == -2) {
+            pingText = "پینگ …";
+            qualityText = "کیفیت …";
+            color = C_WARN;
+        } else if (p.pingMs < 0) {
+            pingText = "پینگ —";
+            qualityText = "کیفیت —";
+            color = C_DANGER;
+        } else {
+            pingText = "پینگ " + p.pingMs + " ms";
+            qualityText = "کیفیت " + quality(p.pingMs);
+            color = qualityColor(p.pingMs);
+        }
+        Ui.setTextSmooth(pingChip, pingText);
+        Ui.setTextSmooth(qualityChip, qualityText);
+        animateTextColor(pingChip, color, 260);
+        animateTextColor(qualityChip, color, 260);
+    }
+
+    private void setRowVisible(final View view, boolean visible) {
+        if (view == null) return;
+        boolean shown = view.getVisibility() == View.VISIBLE;
+        if (visible == shown) return;
+        view.animate().cancel();
+        if (visible) {
+            view.setVisibility(View.VISIBLE);
+            view.setAlpha(0f);
+            view.setTranslationY(Ui.dp(this, 6));
+            view.animate().alpha(1f).translationY(0f)
+                    .setDuration(260).setInterpolator(Ui.EASE).start();
+        } else {
+            view.animate().alpha(0f).setDuration(160).setInterpolator(Ui.SOFT)
+                    .withEndAction(new Runnable() {
+                        @Override public void run() { view.setVisibility(View.GONE); }
+                    }).start();
+        }
+    }
+
+    private void setHintVisible(boolean visible) {
+        if (hintText == null) return;
+        hintText.animate().cancel();
+        if (visible) {
+            hintText.setVisibility(View.VISIBLE);
+            hintText.animate().alpha(1f).setDuration(220).start();
+        } else {
+            hintText.animate().alpha(0f).setDuration(150).setInterpolator(Ui.SOFT)
+                    .withEndAction(new Runnable() {
+                        @Override public void run() { hintText.setVisibility(View.GONE); }
+                    }).start();
+        }
+    }
+
     private void playEntrance() {
         float d = Ui.dp(this, 14);
         header.setAlpha(0f);
@@ -819,8 +1011,11 @@ public class MainActivity extends Activity {
     }
 
     private void updatePingButton() {
-        if (pinging) pingAllBtn.setText(pingProgress.isEmpty() ? "پینگ…" : pingProgress);
-        else pingAllBtn.setText("پینگ همه");
+        if (pinging) {
+            pingAllBtn.setText(pingProgress.isEmpty() ? "در حال تست…" : "توقف " + pingProgress);
+        } else {
+            pingAllBtn.setText("تست همه");
+        }
     }
 
     private void toast(String text) {
@@ -867,9 +1062,9 @@ public class MainActivity extends Activity {
                 color = C_WARN;
             } else if (p.pingMs >= 0) {
                 text = p.pingMs + " ms";
-                color = p.pingMs < 180 ? C_ACCENT : p.pingMs < 400 ? C_WARN : C_DANGER;
+                color = qualityColor(p.pingMs);
             } else if (p.pingMs == -1) {
-                text = "قطع";
+                text = "بی‌پاسخ";
                 color = C_DANGER;
             } else {
                 text = "—";
