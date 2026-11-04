@@ -77,7 +77,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:layout_gravity="center"
-                    android:contentDescription="تازه‌سازی"
+                    android:contentDescription="تازه‌سازی فهرست"
                     android:src="@drawable/ic_refresh"
                     android:tint="@color/accent" />
             </FrameLayout>
@@ -113,7 +113,7 @@
                 android:layout_marginStart="9dp"
                 android:layout_weight="1"
                 android:includeFontPadding="false"
-                android:text="آپدیت لیست آمد"
+                android:text="فهرست تازه‌ای آمده"
                 android:textColor="@color/text_dim"
                 android:textSize="12.5sp" />
 
@@ -174,7 +174,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="7dp"
                     android:includeFontPadding="false"
-                    android:text="قطع"
+                    android:text="آماده"
                     android:textColor="@color/muted"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -259,9 +259,72 @@
                 android:includeFontPadding="false"
                 android:lineSpacingExtra="2dp"
                 android:maxLines="2"
-                android:text="یک سرور را از لیست انتخاب کنید"
+                android:text="یک سرور را از فهرست انتخاب کن"
                 android:textColor="@color/muted"
                 android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/metricsRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/pingChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_ping"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:minWidth="86dp"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="پینگ —"
+                    android:textColor="@color/muted"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/qualityChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_ping"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:minWidth="76dp"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="کیفیت —"
+                    android:textColor="@color/muted"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/testConnBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_btn_ghost"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="تست همین اتصال"
+                android:textColor="@color/text"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- ── actions ────────────────────────────────────────── -->
@@ -275,50 +338,60 @@
             <TextView
                 android:id="@+id/pingAllBtn"
                 android:layout_width="0dp"
-                android:layout_height="46dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_btn_primary"
                 android:clickable="true"
-                android:drawableStart="@drawable/ic_pulse"
-                android:drawablePadding="7dp"
+                android:drawableStart="@drawable/ic_levels"
+                android:drawablePadding="8dp"
                 android:drawableTint="@color/accent_ink"
                 android:focusable="true"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="پینگ همه"
+                android:text="تست همه"
                 android:textColor="@color/accent_ink"
-                android:textSize="13sp"
+                android:textSize="13.5sp"
                 android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
                 android:layout_height="1dp" />
 
-            <TextView
+            <FrameLayout
                 android:id="@+id/sortBtn"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_btn_ghost"
                 android:clickable="true"
-                android:drawableStart="@drawable/ic_sort"
-                android:drawablePadding="7dp"
-                android:drawableTint="@color/text_dim"
-                android:focusable="true"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:text="مرتب‌سازی"
-                android:textColor="@color/text_dim"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="مرتب‌سازی بر اساس سرعت"
+                    android:src="@drawable/ic_sort"
+                    android:tint="@color/text_dim" />
+            </FrameLayout>
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/hintText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:text="برای تست تک، انگشتت را روی یک سرور نگه دار"
+            android:textColor="@color/muted_soft"
+            android:textSize="10.5sp" />
 
         <!-- ── server list ────────────────────────────────────── -->
         <FrameLayout
             android:id="@+id/listWrap"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:layout_weight="1">
 
             <ListView
@@ -337,13 +410,13 @@
                 android:id="@+id/emptyText"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:drawableTop="@drawable/ic_pulse"
+                android:drawableTop="@drawable/ic_levels"
                 android:drawablePadding="12dp"
                 android:drawableTint="@color/muted_soft"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:lineSpacingExtra="5dp"
-                android:text="در حال دریافت کانفیگ‌ها…"
+                android:text="در حال دریافت فهرست…"
                 android:textColor="@color/muted"
                 android:textSize="13sp" />
         </FrameLayout>
