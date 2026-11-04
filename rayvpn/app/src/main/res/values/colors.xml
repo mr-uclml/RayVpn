@@ -1,14 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#0B1020</color>
-    <color name="card">#151C2E</color>
-    <color name="stroke">#2A3654</color>
-    <color name="accent">#2EE6A6</color>
-    <color name="accent_ink">#062018</color>
+    <color name="bg">#070B16</color>
+    <color name="bg2">#0B1222</color>
+    <color name="bg3">#050810</color>
+
+    <color name="card">#121B2D</color>
+    <color name="card_hi">#182339</color>
+    <color name="card_lo">#0E1626</color>
+
+    <color name="stroke">#223054</color>
+    <color name="stroke_soft">#1A2440</color>
+
+    <color name="accent">#35F0B0</color>
+    <color name="accent_dim">#18BE8E</color>
+    <color name="accent_deep">#0E8C6B</color>
+    <color name="accent_ink">#032018</color>
+    <color name="accent_soft">#2935F0B0</color>
+    <color name="accent_ghost">#1435F0B0</color>
+
     <color name="danger">#FF5C7A</color>
-    <color name="warn">#F5C15A</color>
-    <color name="text">#F4F7FB</color>
-    <color name="muted">#93A0BD</color>
-    <color name="chip">#1E2A44</color>
-    <color name="icon_bg">#0E1628</color>
+    <color name="danger_dim">#D93B5C</color>
+    <color name="warn">#FFC46B</color>
+    <color name="warn_dim">#E8A03C</color>
+
+    <color name="text">#F3F7FF</color>
+    <color name="text_dim">#C7D1E6</color>
+    <color name="muted">#8B9ABA</color>
+    <color name="muted_soft">#5F6D8C</color>
+
+    <color name="chip">#1A2440</color>
+    <color name="chip_hi">#223050</color>
+    <color name="icon_bg">#0C1526</color>
+
+    <color name="ripple">#33FFFFFF</color>
+    <color name="transparent">#00000000</color>
 </resources>

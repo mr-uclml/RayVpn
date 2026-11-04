@@ -1,5 +1,6 @@
 package app.rayvpn.client;
 
+import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -11,11 +12,10 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.List;
 
-public class AddActivity extends AppCompatActivity {
+public class AddActivity extends Activity {
     private static final String[] PROTO_LABELS = {"VLESS", "VMess", "Trojan", "Shadowsocks", "Hysteria2"};
     private static final String[] PROTO_VALUES = {"vless", "vmess", "trojan", "shadowsocks", "hysteria"};
     private static final String[] NET_LABELS = {"TCP", "WebSocket", "gRPC", "HTTPUpgrade", "XHTTP", "mKCP"};
