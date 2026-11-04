@@ -1,0 +1,57 @@
+apply plugin: "com.android.application"
+
+android {
+    namespace "app.rayvpn.client"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "app.rayvpn.client"
+        minSdk 24
+        targetSdk 33
+        versionCode 5
+        versionName "1.4.0"
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("rayvpn-release.jks")
+            storePassword "rayvpn-local"
+            keyAlias "rayvpn"
+            keyPassword "rayvpn-local"
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    implementation files("libs/libv2ray.aar")
+    implementation "androidx.appcompat:appcompat:1.6.1"
+}
