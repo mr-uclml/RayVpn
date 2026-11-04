@@ -14,15 +14,21 @@ import android.os.ParcelFileDescriptor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import libv2ray.CoreCallbackHandler;
 import libv2ray.CoreController;
 import libv2ray.Libv2ray;
 
+/**
+ * The VPN "backend": picks a server for the requested mode (fast / balance / best),
+ * brings the tunnel up and then looks up the exit IP and country. The UI only sends
+ * the mode and shows the three states it gets back.
+ */
 public class VpnTunnelService extends VpnService implements CoreCallbackHandler {
     public static final String ACTION_STOP = "app.rayvpn.client.STOP";
     public static final String ACTION_STATE = "app.rayvpn.client.STATE";
-    public static final String EXTRA_PROFILE_ID = "profileId";
+    public static final String EXTRA_MODE = "mode";
 
     public static final String STATE_IDLE = "idle";
     public static final String STATE_CONNECTING = "connecting";
@@ -33,19 +39,33 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     public static volatile String detail = "";
     public static volatile String activeId = "";
     public static volatile String traffic = "";
+
+    /** Exit IP and country of the running tunnel (filled after connecting). */
+    public static volatile String exitIp = "";
+    public static volatile String exitCountry = "";
+    public static volatile String exitCode = "";
+    public static volatile boolean exitFailed;
+
     public static final List<String> logs = new ArrayList<>();
 
     private static final String CHANNEL = "rayvpn";
     private static final int NOTIF = 1;
+    private static final int EXIT_ATTEMPTS = 4;
+    private static final long EXIT_RETRY_MS = 2000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private HandlerThread worker;
     private Handler workerHandler;
     private ParcelFileDescriptor tun;
     private CoreController core;
-    private String activeName = "";
     private String tunError = "";
     private static volatile VpnTunnelService running;
+
+    /** Bumped on every start and stop; background work from an older value is dropped. */
+    private final AtomicInteger session = new AtomicInteger();
+    private volatile int apiPort;
+    private volatile String apiUser = "";
+    private volatile String apiPass = "";
 
     @Override
     public void onCreate() {
@@ -66,27 +86,82 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             });
             return START_NOT_STICKY;
         }
-        final String id = intent == null ? "" : intent.getStringExtra(EXTRA_PROFILE_ID);
-        workerHandler.post(new Runnable() {
-            @Override public void run() { startTunnel(id); }
-        });
+        String modeKey = intent == null ? "" : intent.getStringExtra(EXTRA_MODE);
+        beginSelection(ServerSelector.Mode.fromKey(modeKey));
         return START_NOT_STICKY;
     }
 
-    private void startTunnel(String id) {
-        setState(STATE_CONNECTING, "در حال ساخت تونل", id);
+    // ── selection (runs off the core thread so "stop" is always responsive) ──
+
+    private void beginSelection(final ServerSelector.Mode mode) {
+        final int mine = session.incrementAndGet();
+        exitIp = "";
+        exitCountry = "";
+        exitCode = "";
+        exitFailed = false;
+        setState(STATE_CONNECTING, "در حال انتخاب سرور…", null);
+        new Thread(new Runnable() {
+            @Override public void run() { selectAndConnect(mode, mine); }
+        }, "rayvpn-select").start();
+    }
+
+    private void selectAndConnect(ServerSelector.Mode mode, final int mine) {
+        final Profile chosen;
+        try {
+            ConfigStore store = new ConfigStore(this);
+            store.load();
+            List<Profile> profiles = new ArrayList<>(store.profiles);
+            chosen = ServerSelector.select(mode, profiles,
+                    new ServerSelector.Progress() {
+                        @Override public void update(String text) {
+                            if (session.get() == mine) setState(STATE_CONNECTING, text, null);
+                        }
+                    },
+                    new ServerSelector.Cancel() {
+                        @Override public boolean isCancelled() {
+                            return session.get() != mine;
+                        }
+                    });
+        } catch (Throwable e) {
+            String msg = e.getMessage() == null ? "انتخاب سرور انجام نشد" : e.getMessage();
+            failSession(mine, msg);
+            return;
+        }
+        if (chosen == null) return; // cancelled by the user
+        workerHandler.post(new Runnable() {
+            @Override public void run() { startTunnel(mine, chosen); }
+        });
+    }
+
+    private void failSession(final int mine, final String message) {
+        if (session.get() != mine) return;
+        workerHandler.post(new Runnable() {
+            @Override public void run() {
+                if (session.get() != mine) return;
+                session.incrementAndGet();
+                log("خطا: " + message);
+                setState(STATE_ERROR, message, "");
+                stopForeground(true);
+                stopSelf();
+            }
+        });
+    }
+
+    // ── tunnel ─────────────────────────────────────────────────────────────
+
+    private void startTunnel(int mine, Profile profile) {
+        if (session.get() != mine) return;
+        setState(STATE_CONNECTING, "در حال ساخت تونل", profile.id);
         try {
             if (RayApp.coreError != null && !RayApp.coreError.isEmpty()) {
                 throw new IllegalStateException("هسته بارگذاری نشد: " + RayApp.coreError);
             }
-            ConfigStore store = new ConfigStore(this);
-            store.load();
-            Profile profile = store.byId(id);
-            if (profile == null) profile = store.selected();
-            if (profile == null) throw new IllegalStateException("کانفیگی برای اتصال نیست");
-            activeName = profile.name == null || profile.name.isEmpty() ? profile.address : profile.name;
-            activeId = profile.id;
-            String config = XrayConfigBuilder.buildTunnel(profile);
+            apiPort = ServerSelector.freePort();
+            if (apiPort < 0) throw new IllegalStateException("پورت آزاد پیدا نشد");
+            apiUser = ServerSelector.token();
+            apiPass = ServerSelector.token();
+            XrayConfigBuilder.LocalSocks socks = new XrayConfigBuilder.LocalSocks(apiPort, apiUser, apiPass);
+            String config = XrayConfigBuilder.buildTunnel(profile, socks);
             ParcelFileDescriptor pfd = openTun();
             if (pfd == null) {
                 String why = tunError == null || tunError.isEmpty() ? "سیستم اجازهٔ VPN نداد" : tunError;
@@ -98,8 +173,9 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             if (core == null) core = Libv2ray.newCoreController(this);
             if (core.getIsRunning()) core.stopLoop();
             core.startLoop(config, fd);
-            setState(STATE_CONNECTED, "متصل به " + activeName, profile.id);
-            updateNotification("متصل", activeName, true);
+            setState(STATE_CONNECTED, "در حال دریافت IP…", profile.id);
+            updateNotification("متصل", "در حال دریافت IP…", true);
+            startExitLookup(mine);
         } catch (Exception e) {
             String msg = e.getMessage() == null ? e.toString() : e.getMessage();
             log("خطا: " + msg);
@@ -108,10 +184,51 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             } catch (Exception ignored) {
             }
             closeTun();
+            session.incrementAndGet();
             setState(STATE_ERROR, msg, "");
             stopForeground(true);
             stopSelf();
         }
+    }
+
+    /** Asks the connected tunnel for its public IP and country (a few tries while it warms up). */
+    private void startExitLookup(final int mine) {
+        final int port = apiPort;
+        final String user = apiUser;
+        final String pass = apiPass;
+        new Thread(new Runnable() {
+            @Override public void run() {
+                for (int attempt = 0; attempt < EXIT_ATTEMPTS; attempt++) {
+                    if (session.get() != mine) return;
+                    ExitInfo.Info info = ExitInfo.lookup(port, user, pass);
+                    if (info != null) {
+                        if (session.get() != mine) return;
+                        exitIp = info.ip;
+                        exitCountry = info.country;
+                        exitCode = info.code;
+                        exitFailed = false;
+                        setState(STATE_CONNECTED, "", null);
+                        updateNotification("متصل", exitLine(), true);
+                        return;
+                    }
+                    try {
+                        Thread.sleep(EXIT_RETRY_MS);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+                if (session.get() != mine) return;
+                exitFailed = true;
+                setState(STATE_CONNECTED, "", null);
+                updateNotification("متصل", "IP نامشخص", true);
+            }
+        }, "rayvpn-exit").start();
+    }
+
+    private static String exitLine() {
+        String country = exitCountry == null || exitCountry.isEmpty() ? exitCode : exitCountry;
+        if (country == null || country.isEmpty()) return exitIp;
+        return exitIp + " · " + country;
     }
 
     private ParcelFileDescriptor openTun() {
@@ -149,6 +266,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     }
 
     private void stopTunnel(String message) {
+        session.incrementAndGet();
         try {
             if (core != null && core.getIsRunning()) core.stopLoop();
         } catch (Exception e) {
@@ -156,6 +274,10 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         }
         core = null;
         closeTun();
+        exitIp = "";
+        exitCountry = "";
+        exitCode = "";
+        exitFailed = false;
         setState(STATE_IDLE, message, "");
         traffic = "";
         stopForeground(true);
@@ -224,6 +346,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         else context.startService(i);
     }
 
+    /** @param id null keeps the current active id */
     private void setState(String next, String message, String id) {
         state = next;
         detail = message == null ? "" : message;
