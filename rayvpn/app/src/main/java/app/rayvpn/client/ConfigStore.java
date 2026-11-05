@@ -48,7 +48,7 @@ public final class ConfigStore {
                     profiles.add(Profile.fromJson(arr.getJSONObject(i)));
                 }
                 java.util.HashSet<String> used = new java.util.HashSet<>();
-                boolean dirty = false;
+                boolean dirty = dropDuplicates(profiles) > 0;
                 for (Profile p : profiles) {
                     if (p.id == null || p.id.isEmpty() || !used.add(p.id)) {
                         p.id = UUID.randomUUID().toString();
@@ -123,8 +123,40 @@ public final class ConfigStore {
         return null;
     }
 
+    /**
+     * Removes profiles that describe exactly the same endpoint as an earlier one: the same
+     * host, port, transport, credentials and TLS settings, only the name differs. Testing
+     * them twice costs time and tells us nothing new.
+     */
+    private static int dropDuplicates(List<Profile> list) {
+        if (list == null || list.size() < 2) return 0;
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        int removed = 0;
+        for (java.util.Iterator<Profile> it = list.iterator(); it.hasNext(); ) {
+            Profile p = it.next();
+            if (p == null) {
+                it.remove();
+                removed++;
+                continue;
+            }
+            if (!seen.add(p.identity())) {
+                it.remove();
+                removed++;
+            }
+        }
+        return removed;
+    }
+
     public synchronized void addAll(List<Profile> incoming, String subscriptionId) {
-        for (Profile p : incoming) {
+        if (incoming == null) return;
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (Profile existing : profiles) seen.add(existing.identity());
+        for (java.util.Iterator<Profile> it = incoming.iterator(); it.hasNext(); ) {
+            Profile p = it.next();
+            if (p == null || !seen.add(p.identity())) {
+                it.remove();
+                continue;
+            }
             if (p.id == null || p.id.isEmpty()) p.id = UUID.randomUUID().toString();
             if (p.addedAt == 0) p.addedAt = System.currentTimeMillis();
             if (subscriptionId != null) p.subscriptionId = subscriptionId;
@@ -148,6 +180,7 @@ public final class ConfigStore {
         }
         profiles.clear();
         profiles.addAll(kept);
+        dropDuplicates(incoming);
         String newSelected = "";
         for (Profile p : incoming) {
             if (p.id == null || p.id.isEmpty()) p.id = UUID.randomUUID().toString();
@@ -198,6 +231,7 @@ public final class ConfigStore {
         Profile current = byId(selectedId);
         if (current != null && current.sourceLink != null) keepLink = current.sourceLink;
         boolean keepConsumed = false;
+        dropDuplicates(incoming);
         profiles.clear();
         java.util.HashSet<String> used = new java.util.HashSet<>();
         for (Profile p : incoming) {

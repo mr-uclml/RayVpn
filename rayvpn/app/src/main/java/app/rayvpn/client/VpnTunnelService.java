@@ -81,6 +81,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     public void onCreate() {
         super.onCreate();
         running = this;
+        ServerCache.init(this);
         createChannel();
         worker = new HandlerThread("rayvpn-core");
         worker.start();
@@ -129,9 +130,9 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                     new ServerSelector.Progress() {
                         @Override public void update(int step, int index, int total) {
                             if (session.get() != mine) return;
-                            int res = step == ServerSelector.Progress.TEST ? R.string.svc_test_server
+                            int res = step == ServerSelector.Progress.SPEED ? R.string.svc_test_speed
                                     : step == ServerSelector.Progress.PING ? R.string.svc_test_ping
-                                    : R.string.svc_test_speed;
+                                    : R.string.svc_test_server;
                             boolean fa = LocaleHelper.isPersian(VpnTunnelService.this);
                             setState(STATE_CONNECTING,
                                     getString(res, Ui.num(index, fa), Ui.num(total, fa)), null);
@@ -143,10 +144,12 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                         }
                     });
         } catch (Throwable e) {
+            ServerCache.flush();
             String msg = e.getMessage() == null ? getString(R.string.hero_error) : e.getMessage();
             failSession(mine, msg);
             return;
         }
+        ServerCache.flush();
         if (chosen == null) return; // cancelled by the user
         workerHandler.post(new Runnable() {
             @Override public void run() { startTunnel(mine, chosen); }
