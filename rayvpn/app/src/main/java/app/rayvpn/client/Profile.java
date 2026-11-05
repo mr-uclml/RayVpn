@@ -3,6 +3,9 @@ package app.rayvpn.client;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.MessageDigest;
+import java.util.Locale;
+
 public class Profile {
     public String id = "";
     public String name = "";
@@ -36,6 +39,67 @@ public class Profile {
     public String subscriptionId = "";
     public long addedAt;
     public long pingMs = -2;
+
+    /**
+     * Everything that describes the endpoint, apart from the cosmetics (name, id, times).
+     * Two profiles with the same identity behave exactly the same way, so only one of them
+     * is worth testing.
+     */
+    public String identity() {
+        StringBuilder sb = new StringBuilder(160);
+        sb.append(low(protocol)).append('|')
+          .append(low(network)).append('|')
+          .append(low(security)).append('|')
+          .append(low(address)).append(':').append(port).append('|')
+          .append(low(sni)).append('|')
+          .append(low(hostHeader)).append('|')
+          .append(nz(path)).append('|')
+          .append(low(alpn)).append('|')
+          .append(low(fingerprint)).append('|')
+          .append(nz(publicKey)).append('|')
+          .append(nz(shortId)).append('|')
+          .append(nz(spiderX)).append('|')
+          .append(low(headerType)).append('|')
+          .append(nz(serviceName)).append('|')
+          .append(low(mode)).append('|')
+          .append(nz(seed)).append('|')
+          .append(nz(user)).append('|')
+          .append(nz(method)).append('|')
+          .append(nz(flow)).append('|')
+          .append(nz(ech)).append('|')
+          .append(nz(pinned)).append('|')
+          .append(nz(mldsa)).append('|')
+          .append(nz(extra)).append('|')
+          .append(allowInsecure ? '1' : '0');
+        if (rawJson != null && !rawJson.isEmpty()) {
+            sb.append("|json:").append(digest(rawJson));
+        }
+        return sb.toString();
+    }
+
+    private static String low(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.US);
+    }
+
+    private static String nz(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    /** Stable fingerprint of a raw JSON config: whitespace and key order do not matter to Xray. */
+    private static String digest(String raw) {
+        String compact = raw.replaceAll("\\s+", "");
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] hash = md.digest(compact.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(compact.hashCode());
+        }
+    }
 
     public String subtitle() {
         if ("raw".equals(protocol)) {
