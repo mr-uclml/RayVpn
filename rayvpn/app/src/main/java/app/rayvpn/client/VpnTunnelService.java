@@ -421,18 +421,26 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     // ── live traffic (outbound counters of the running core) ────────────
 
     private volatile boolean trafficOn;
+    private long trafficLastAt;
 
     private final Runnable trafficTick = new Runnable() {
         @Override public void run() {
             if (!trafficOn) return;
+            long now = System.currentTimeMillis();
+            long span = trafficLastAt <= 0 ? 1000L : now - trafficLastAt;
+            trafficLastAt = now;
+            if (span < 200L) span = 200L;
             long[] sample = sampleTraffic();
             if (sample != null) {
+                // every read resets the core counters, so a sample is the traffic
+                // of the last `span` milliseconds: accumulate it and normalise it
+                // to bytes per second.
                 bytesUp += sample[0];
                 bytesDown += sample[1];
-                speedUp = sample[2];
-                speedDown = sample[3];
+                speedUp = sample[0] * 1000L / span;
+                speedDown = sample[1] * 1000L / span;
             }
-            workerHandler.postDelayed(this, 1000);
+            workerHandler.postDelayed(this, Math.max(200L, 1000L - (System.currentTimeMillis() - now)));
         }
     };
 
@@ -443,6 +451,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         speedUp = 0L;
         sessionStartedAt = System.currentTimeMillis();
         trafficOn = true;
+        trafficLastAt = 0L;
         if (workerHandler == null) return;
         workerHandler.removeCallbacks(trafficTick);
         workerHandler.postDelayed(trafficTick, 1000);
@@ -450,6 +459,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     private void stopTraffic() {
         trafficOn = false;
+        trafficLastAt = 0L;
         if (workerHandler != null) workerHandler.removeCallbacks(trafficTick);
         speedDown = 0L;
         speedUp = 0L;
@@ -457,8 +467,8 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     /**
      * Reads the core counters, which are reset by every read, and returns
-     * {up, down, upPerSecond, downPerSecond}. The call is guarded by the same
-     * lock as every other core call so it can never race a start or a stop.
+     * {up, down}. The call is guarded by the same lock as every other core
+     * call so it can never race a start or a stop.
      */
     private long[] sampleTraffic() {
         String raw;
@@ -470,7 +480,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                 return null;
             }
         }
-        if (raw == null || raw.isEmpty()) return new long[]{0L, 0L, 0L, 0L};
+        if (raw == null || raw.isEmpty()) return new long[]{0L, 0L};
         long up = 0L;
         long down = 0L;
         for (String part : raw.split(";")) {
@@ -485,7 +495,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             if ("uplink".equals(bits[1])) up += value;
             else if ("downlink".equals(bits[1])) down += value;
         }
-        return new long[]{up, down, up, down};
+        return new long[]{up, down};
     }
 
     private void createChannel() {
