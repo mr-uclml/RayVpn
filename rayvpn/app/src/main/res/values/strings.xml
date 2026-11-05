@@ -1,4 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ری‌وی‌پی‌ان</string>
+    <string name="brand_tag">اتصال خصوصی</string>
+
+    <!-- states -->
+    <string name="state_ready">آماده</string>
+    <string name="state_connecting">در حال اتصال</string>
+    <string name="state_connected">متصل</string>
+    <string name="state_error">خطا</string>
+    <string name="state_offline">قطع</string>
+
+    <string name="action_connect">اتصال</string>
+    <string name="action_cancel">لغو</string>
+    <string name="action_disconnect">قطع</string>
+
+    <!-- modes -->
+    <string name="tab_connect">اتصال</string>
+    <string name="tab_stats">آمار</string>
+    <string name="tab_settings">تنظیمات</string>
+
+    <string name="mode_fast">سریع</string>
+    <string name="mode_balance">متعادل</string>
+    <string name="mode_best">بهترین</string>
+    <string name="mode_fast_title">اتصال سریع</string>
+    <string name="mode_balance_title">اتصال متعادل</string>
+    <string name="mode_best_title">بهترین اتصال</string>
+    <string name="mode_fast_hint">اولین سروری که پاسخ بدهد</string>
+    <string name="mode_balance_hint">سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه</string>
+    <string name="mode_best_hint">ده سرور برتر، سپس تست سرعت</string>
+    <string name="mode_label">حالت اتصال</string>
+
+    <!-- hero -->
+    <string name="hero_connecting">در حال اتصال</string>
+    <string name="hero_error">اتصال برقرار نشد</string>
+    <string name="country_unknown">کشور نامشخص</string>
+    <string name="ip_unknown">IP نامشخص</string>
+    <string name="ip_fetching">در حال دریافت IP…</string>
+    <string name="connect_hint">برای شروع اتصال، دکمه را بزنید</string>
+
+    <!-- live stats -->
+    <string name="stat_download">دانلود</string>
+    <string name="stat_upload">آپلود</string>
+    <string name="stat_duration">مدت</string>
+    <string name="stat_ping">پینگ</string>
+    <string name="stat_ping_idle">—</string>
+    <string name="ping_action">پینگ</string>
+    <string name="ping_running">…</string>
+    <string name="ping_no_answer">بی‌پاسخ</string>
+
+    <!-- stats tab -->
+    <string name="stats_session">این نشست</string>
+    <string name="stats_total">مجموع</string>
+    <string name="stats_speed">سرعت زنده</string>
+    <string name="stats_avg_speed">میانگین سرعت</string>
+    <string name="stats_sessions">تعداد اتصال</string>
+    <string name="stats_best_ping">کمترین پینگ</string>
+    <string name="stats_total_data">کل مصرف</string>
+    <string name="stats_no_session">هنوز اتصالی ثبت نشده</string>
+    <string name="stats_reset">بازنشانی آمار</string>
+    <string name="stats_reset_done">آمار پاک شد</string>
+    <string name="stats_chart_hint">۶۰ ثانیهٔ گذشته</string>
+
+    <!-- settings -->
+    <string name="settings_appearance">ظاهر</string>
+    <string name="settings_theme_dark">تیره</string>
+    <string name="settings_theme_light">روشن</string>
+    <string name="settings_language">زبان</string>
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_en">English</string>
+    <string name="settings_notifications">اعلان‌ها</string>
+    <string name="settings_notifications_hint">اطلاع از آپدیت فهرست سرورها</string>
+    <string name="settings_servers">سرورها</string>
+    <string name="servers_ready">%1$s سرور آماده</string>
+    <string name="servers_empty">هنوز سروری دریافت نشده</string>
+    <string name="refresh_action">به‌روزرسانی فهرست</string>
+    <string name="refresh_running">در حال به‌روزرسانی…</string>
+    <string name="update_available">فهرست تازه‌ای آماده است</string>
+    <string name="update_action">به‌روزرسانی</string>
+    <string name="settings_about">درباره</string>
+    <string name="about_version">نسخهٔ %1$s</string>
+    <string name="about_note">اتصال امن و سبک بر پایهٔ Xray</string>
+
+    <!-- messages -->
+    <string name="msg_stop_first">اول اتصال فعلی را قطع کن</string>
+    <string name="msg_no_servers">هنوز سروری دریافت نشده</string>
+    <string name="msg_vpn_denied">اجازهٔ VPN داده نشد</string>
+    <string name="msg_no_change">تغییری نبود</string>
+    <string name="msg_update_ready">نسخهٔ تازهٔ فهرست آماده است</string>
+    <string name="msg_previous_removed">سرور قبلی حذف شد</string>
+    <string name="msg_ping_failed">این اتصال جواب نداد</string>
+    <string name="msg_server_added">%1$s سرور به‌روز شد</string>
+    <string name="msg_server_added_skipped">%1$s سرور به‌روز شد، %2$s خط خراب نادیده گرفته شد</string>
+
+    <!-- service -->
+    <string name="svc_selecting">انتخاب سرور…</string>
+    <string name="svc_building">در حال ساخت تونل</string>
+    <string name="svc_ip">در حال دریافت IP…</string>
+    <string name="svc_test_server">تست سرور %1$s از %2$s</string>
+    <string name="svc_test_ping">سنجش پینگ %1$s از %2$s</string>
+    <string name="svc_test_speed">تست سرعت %1$s از %2$s</string>
+    <string name="svc_stopped">قطع شد</string>
+    <string name="svc_slow">سرور کند</string>
+    <string name="svc_title">ری‌وی‌پی‌ان</string>
+    <string name="svc_preparing">در حال آماده‌سازی تونل</string>
+    <string name="svc_connected">متصل</string>
+    <string name="svc_connect_action">اتصال</string>
+    <string name="notification_channel">وضعیت اتصال</string>
+
+    <!-- units -->
+    <string name="unit_ms">ms</string>
+    <string name="dash">—</string>
 </resources>

@@ -11,92 +11,129 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
- * Main screen. The user never sees the server list: they pick one of three
- * connection modes (fast / balance / best) and the service does the selection.
- * After connecting only the exit country and IP are shown.
+ * The dashboard: three quiet pages (connect / stats / settings) over the same
+ * tunnel service. Nothing here decides which server to use — the service does
+ * that; the screen only shows the three states it reports.
  */
 public class MainActivity extends Activity {
+
     private static final int REQ_VPN = 42;
     private static final int REQ_NOTIF = 43;
-    private static final String PREFS = "rayvpn_prefs";
-    private static final String KEY_MODE = "server_mode";
 
-    private static final int C_ACCENT = 0xFF35F0B0;
-    private static final int C_MUTED = 0xFF8B9ABA;
-    private static final int C_WARN = 0xFFFFC46B;
-    private static final int C_DANGER = 0xFFFF5C7A;
-    private static final int C_TEXT = 0xFFF3F7FF;
-    private static final int C_TEXT_DIM = 0xFFC7D1E6;
-    private static final int C_INK = 0xFF032018;
+    private static final int TAB_CONNECT = 0;
+    private static final int TAB_STATS = 1;
+    private static final int TAB_SETTINGS = 2;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     private ConfigStore store;
     private ServerSelector.Mode mode = ServerSelector.Mode.BALANCE;
-    private ServerSelector.Mode shownMode;
-    private boolean shownBusy;
+    private boolean persian;
+
+    private int tab = TAB_CONNECT;
+    private String lastState;
+    private String lastPill;
     private String lastHeroKey = "";
+    private int lastPillColor = -1;
+    private int lastCoreStyle = -1;
+    private boolean applying;
+    private boolean pingRunning;
+    private boolean refreshSpinning;
+    private boolean updateBarShown;
+
+    /** Session counters already folded into the stored totals. */
+    private long flushedDown;
+    private long flushedUp;
+    private boolean sessionCounted;
+    private long lastFlush;
 
     private View root;
     private View header;
-    private View hero;
-    private View actions;
+    private View connectWrap;
     private View glow;
-    private View spinRing;
-    private View statusDot;
-    private View refreshBtn;
-    private View refreshIcon;
-    private View updateBar;
+
+    private View spinArc;
     private View ringA;
     private View ringB;
-    private TextView connectBtn;
-    private TextView statusPill;
-    private TextView serverName;
-    private TextView detailText;
-    private TextView versionText;
-    private TextView modeFast;
-    private TextView modeBalance;
-    private TextView modeBest;
-    private TextView pingBtn;
-    private boolean pingShown;
-    private boolean pinging;
+    private View ringOuter;
+    private View statusDot;
+    private View updateBar;
+    private View refreshRow;
+    private ImageView refreshIcon;
 
-    private boolean applying;
-    private boolean askedNotif;
-    private boolean connectPulse;
-    private String lastPillText;
-    private int lastPillColor = C_MUTED;
-    private int lastBtnBg;
-    private int lastBtnColor;
-    private int lastGlowRes;
-    private String lastState;
-    private int dotColor = C_MUTED;
+    private RayText statusText;
+    private RayText connectCore;
+    private RayText heroTitle;
+    private RayText heroSub;
+    private RayText valDown;
+    private RayText valUp;
+    private RayText valTime;
+    private RayText pingBtn;
+    private RayText modeFast;
+    private RayText modeBalance;
+    private RayText modeBest;
+    private RayText footerHint;
+
+    private View tabConnect;
+    private View tabStats;
+    private View tabSettings;
+
+    private View navConnect;
+    private View navStats;
+    private View navSettings;
+    private ImageView navConnectIcon;
+    private ImageView navStatsIcon;
+    private ImageView navSettingsIcon;
+    private RayText navConnectText;
+    private RayText navStatsText;
+    private RayText navSettingsText;
+
+    private SpeedGraph graph;
+    private RayText speedDown;
+    private RayText speedUp;
+    private RayText sessDown;
+    private RayText sessUp;
+    private RayText sessTime;
+    private RayText totalData;
+    private RayText totalSessions;
+    private RayText totalPing;
+
+    private RayText themeDark;
+    private RayText themeLight;
+    private RayText langFa;
+    private RayText langEn;
+    private RayText serversCount;
+    private RayText refreshText;
+    private RayText aboutVersion;
+    private ToggleView notifToggle;
+
+    private ObjectAnimator breathe;
+    private ObjectAnimator spin;
+    private ObjectAnimator refreshAnim;
     private boolean breathing;
     private boolean spinning;
-    private boolean refreshSpinning;
-    private boolean updateBarShown;
-    private ObjectAnimator breatheAnim;
-    private ObjectAnimator spinAnim;
-    private ObjectAnimator refreshAnim;
+    private boolean pulsing;
 
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
+    private final BroadcastReceiver stateReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
             render();
         }
     };
 
     private final BroadcastReceiver configReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
+        @Override public void onReceive(Context context, Intent intent) {
             applying = false;
             store.load();
             render();
@@ -105,17 +142,29 @@ public class MainActivity extends Activity {
             boolean manual = intent.getBooleanExtra("manual", false);
             boolean removed = intent.getBooleanExtra("removedActive", false);
             String error = intent.getStringExtra("error");
-            if (removed) toast("سرور قبلی حذف شد");
-            else if (changed) {
+            if (removed) {
+                toast(getString(R.string.msg_previous_removed));
+            } else if (changed) {
                 int skipped = intent.getIntExtra("skipped", 0);
-                String note = skipped > 0 ? "، " + persianCount(skipped) + " خط خراب نادیده گرفته شد" : "";
-                toast(persianCount(intent.getIntExtra("count", 0)) + " سرور به‌روز شد" + note);
-            }
-            else if (available) {
-                toast("آپدیت آمد. می‌توانی به‌روزرسانی کنی");
+                int count = intent.getIntExtra("count", 0);
+                toast(skipped > 0
+                        ? getString(R.string.msg_server_added_skipped, num(count), num(skipped))
+                        : getString(R.string.msg_server_added, num(count)));
+            } else if (available) {
+                toast(getString(R.string.msg_update_ready));
                 askNotify();
-            } else if (error != null && !error.isEmpty() && (manual || store.profiles.isEmpty())) toast(error);
-            else if (manual) toast("تغییری نبود");
+            } else if (error != null && !error.isEmpty() && (manual || store.profiles.isEmpty())) {
+                toast(error);
+            } else if (manual) {
+                toast(getString(R.string.msg_no_change));
+            }
+        }
+    };
+
+    private final Runnable ticker = new Runnable() {
+        @Override public void run() {
+            updateLive();
+            handler.postDelayed(this, 1000);
         }
     };
 
@@ -126,77 +175,173 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(Prefs.light(this) ? R.style.Theme_RayVPN_Light : R.style.Theme_RayVPN);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        persian = LocaleHelper.isPersian(this);
         store = new ConfigStore(this);
-        mode = ServerSelector.Mode.fromKey(
-                getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_MODE, "balance"));
+        mode = Prefs.mode(this);
 
         root = findViewById(R.id.root);
         header = findViewById(R.id.header);
-        hero = findViewById(R.id.hero);
-        actions = findViewById(R.id.actions);
+        connectWrap = findViewById(R.id.connectWrap);
         glow = findViewById(R.id.glow);
-        spinRing = findViewById(R.id.spinRing);
-        statusDot = findViewById(R.id.statusDot);
-        refreshBtn = findViewById(R.id.refreshBtn);
-        refreshIcon = findViewById(R.id.refreshIcon);
-        updateBar = findViewById(R.id.updateBar);
+        spinArc = findViewById(R.id.spinArc);
         ringA = findViewById(R.id.ringA);
         ringB = findViewById(R.id.ringB);
-        connectBtn = findViewById(R.id.connectBtn);
-        statusPill = findViewById(R.id.statusPill);
-        serverName = findViewById(R.id.serverName);
-        detailText = findViewById(R.id.detailText);
-        versionText = findViewById(R.id.versionText);
+        ringOuter = findViewById(R.id.ringOuter);
+        statusDot = findViewById(R.id.statusDot);
+        updateBar = findViewById(R.id.updateBar);
+        refreshRow = findViewById(R.id.refreshRow);
+        refreshIcon = findViewById(R.id.refreshIcon);
+
+        statusText = findViewById(R.id.statusText);
+        connectCore = findViewById(R.id.connectCore);
+        heroTitle = findViewById(R.id.heroTitle);
+        heroSub = findViewById(R.id.heroSub);
+        valDown = findViewById(R.id.valDown);
+        valUp = findViewById(R.id.valUp);
+        valTime = findViewById(R.id.valTime);
+        pingBtn = findViewById(R.id.pingBtn);
         modeFast = findViewById(R.id.modeFast);
         modeBalance = findViewById(R.id.modeBalance);
         modeBest = findViewById(R.id.modeBest);
-        pingBtn = findViewById(R.id.pingBtn);
+        footerHint = findViewById(R.id.footerHint);
 
-        glow.setAlpha(0.7f);
-        lastBtnBg = R.drawable.bg_connect;
-        lastBtnColor = C_INK;
-        lastGlowRes = R.drawable.bg_glow;
-        if (statusDot.getBackground() != null) statusDot.getBackground().setTint(C_MUTED);
+        tabConnect = findViewById(R.id.tabConnect);
+        tabStats = findViewById(R.id.tabStats);
+        tabSettings = findViewById(R.id.tabSettings);
+
+        navConnect = findViewById(R.id.navConnect);
+        navStats = findViewById(R.id.navStats);
+        navSettings = findViewById(R.id.navSettings);
+        navConnectIcon = findViewById(R.id.navConnectIcon);
+        navStatsIcon = findViewById(R.id.navStatsIcon);
+        navSettingsIcon = findViewById(R.id.navSettingsIcon);
+        navConnectText = findViewById(R.id.navConnectText);
+        navStatsText = findViewById(R.id.navStatsText);
+        navSettingsText = findViewById(R.id.navSettingsText);
+
+        graph = findViewById(R.id.graph);
+        speedDown = findViewById(R.id.speedDown);
+        speedUp = findViewById(R.id.speedUp);
+        sessDown = findViewById(R.id.sessDown);
+        sessUp = findViewById(R.id.sessUp);
+        sessTime = findViewById(R.id.sessTime);
+        totalData = findViewById(R.id.totalData);
+        totalSessions = findViewById(R.id.totalSessions);
+        totalPing = findViewById(R.id.totalPing);
+
+        themeDark = findViewById(R.id.themeDark);
+        themeLight = findViewById(R.id.themeLight);
+        langFa = findViewById(R.id.langFa);
+        langEn = findViewById(R.id.langEn);
+        serversCount = findViewById(R.id.serversCount);
+        refreshText = findViewById(R.id.refreshText);
+        aboutVersion = findViewById(R.id.aboutVersion);
+        notifToggle = findViewById(R.id.notifToggle);
 
         Ui.applyFont(root);
-        Ui.pressable(connectBtn);
-        Ui.pressable(refreshBtn);
-        Ui.pressable(findViewById(R.id.updateBtn));
-        Ui.pressable(modeFast);
-        Ui.pressable(modeBalance);
-        Ui.pressable(modeBest);
+        Ui.pressable(connectCore);
         Ui.pressable(pingBtn);
-        root.post(new Runnable() {
-            @Override public void run() { playEntrance(); }
-        });
+        Ui.pressable(findViewById(R.id.updateBtn));
+        Ui.pressable(themeDark);
+        Ui.pressable(themeLight);
+        Ui.pressable(langFa);
+        Ui.pressable(langEn);
+        Ui.pressable(findViewById(R.id.statsReset));
 
-        connectBtn.setOnClickListener(new View.OnClickListener() {
+        connectCore.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { onConnectClicked(); }
         });
-        refreshBtn.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { applyUpdate(); }
+        pingBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { onPingClicked(); }
         });
         findViewById(R.id.updateBtn).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { applyUpdate(); }
         });
+        updateBar.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { applyUpdate(); }
+        });
+        refreshRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { applyUpdate(); }
+        });
+
         modeFast.setOnClickListener(modeClick(ServerSelector.Mode.FAST));
         modeBalance.setOnClickListener(modeClick(ServerSelector.Mode.BALANCE));
         modeBest.setOnClickListener(modeClick(ServerSelector.Mode.BEST));
-        pingBtn.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                Ui.bounce(v);
-                onPingClicked();
+
+        themeDark.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { pickTheme(false); }
+        });
+        themeLight.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { pickTheme(true); }
+        });
+        langFa.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { pickLanguage("fa"); }
+        });
+        langEn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { pickLanguage("en"); }
+        });
+        findViewById(R.id.statsReset).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { resetStats(); }
+        });
+
+        notifToggle.setChecked(Prefs.notifications(this), false);
+        notifToggle.setListener(new ToggleView.Listener() {
+            @Override public void onToggle(boolean checked) {
+                Prefs.notifications(MainActivity.this, checked);
+                if (checked) askNotify();
             }
         });
+
+        navConnect.setOnClickListener(navClick(TAB_CONNECT));
+        navStats.setOnClickListener(navClick(TAB_STATS));
+        navSettings.setOnClickListener(navClick(TAB_SETTINGS));
+
+        aboutVersion.setText(getString(R.string.about_version, versionName()));
+        connectCore.weight(Ui.W_SEMIBOLD);
+        glow.setAlpha(0.75f);
+        statusDot.getBackground().setTint(Ui.color(this, R.attr.rayMuted));
+
+        renderTabs(false);
+        render();
+        root.post(new Runnable() {
+            @Override public void run() { playEntrance(); }
+        });
+    }
+
+    private String versionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private View.OnClickListener modeClick(final ServerSelector.Mode picked) {
         return new View.OnClickListener() {
             @Override public void onClick(View v) {
                 Ui.bounce(v);
-                onModeClicked(picked);
+                if (busy(VpnTunnelService.state)) {
+                    toast(getString(R.string.msg_stop_first));
+                    return;
+                }
+                if (picked == mode) return;
+                mode = picked;
+                Prefs.mode(MainActivity.this, picked);
+                render();
+            }
+        };
+    }
+
+    private View.OnClickListener navClick(final int which) {
+        return new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (which == tab) return;
+                tab = which;
+                renderTabs(true);
             }
         };
     }
@@ -204,12 +349,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-        IntentFilter filter = new IntentFilter(VpnTunnelService.ACTION_STATE);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(receiver, filter);
+        IntentFilter state = new IntentFilter(VpnTunnelService.ACTION_STATE);
         IntentFilter configs = new IntentFilter(ConfigSync.ACTION_UPDATED);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(configReceiver, configs, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(configReceiver, configs);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(stateReceiver, state, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(configReceiver, configs, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(stateReceiver, state);
+            registerReceiver(configReceiver, configs);
+        }
     }
 
     @Override
@@ -217,54 +365,40 @@ public class MainActivity extends Activity {
         super.onResume();
         store.load();
         render();
+        handler.removeCallbacks(ticker);
+        handler.post(ticker);
         ConfigSync.syncNow(false);
     }
 
     @Override
+    protected void onPause() {
+        handler.removeCallbacks(ticker);
+        flushTotals();
+        super.onPause();
+    }
+
+    @Override
     protected void onStop() {
-        try { unregisterReceiver(receiver); } catch (Exception ignored) {}
-        try { unregisterReceiver(configReceiver); } catch (Exception ignored) {}
+        try { unregisterReceiver(stateReceiver); } catch (Exception ignored) { }
+        try { unregisterReceiver(configReceiver); } catch (Exception ignored) { }
         super.onStop();
-    }
-
-    private void applyUpdate() {
-        if (applying) return;
-        applying = true;
-        versionText.setText("در حال به‌روزرسانی…");
-        ConfigSync.syncNow(true);
-    }
-
-    private void askNotify() {
-        if (askedNotif || Build.VERSION.SDK_INT < 33) return;
-        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
-        askedNotif = true;
-        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
     }
 
     // ── actions ────────────────────────────────────────────────────────────
 
-    private static boolean busy(String st) {
-        return VpnTunnelService.STATE_CONNECTING.equals(st) || VpnTunnelService.STATE_CONNECTED.equals(st);
-    }
-
-    private void onModeClicked(ServerSelector.Mode picked) {
-        if (busy(VpnTunnelService.state)) {
-            toast("اول اتصال فعلی را قطع کن");
-            return;
-        }
-        if (picked == mode) return;
-        mode = picked;
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_MODE, picked.key).apply();
-        render();
+    private static boolean busy(String state) {
+        return VpnTunnelService.STATE_CONNECTING.equals(state)
+                || VpnTunnelService.STATE_CONNECTED.equals(state);
     }
 
     private void onConnectClicked() {
+        Ui.bounce(connectCore);
         if (busy(VpnTunnelService.state)) {
             VpnTunnelService.requestStop(this);
             return;
         }
         if (store.profiles.isEmpty()) {
-            toast("هنوز سروری دریافت نشده");
+            toast(getString(R.string.msg_no_servers));
             return;
         }
         if (Build.VERSION.SDK_INT >= 33
@@ -277,12 +411,12 @@ public class MainActivity extends Activity {
     }
 
     private void startTunnel() {
-        Intent i = new Intent(this, VpnTunnelService.class);
-        i.putExtra(VpnTunnelService.EXTRA_MODE, mode.key);
-        if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
-        else startService(i);
+        Intent intent = new Intent(this, VpnTunnelService.class);
+        intent.putExtra(VpnTunnelService.EXTRA_MODE, mode.key);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+        else startService(intent);
         VpnTunnelService.state = VpnTunnelService.STATE_CONNECTING;
-        VpnTunnelService.detail = "انتخاب سرور…";
+        VpnTunnelService.detail = getString(R.string.svc_selecting);
         render();
     }
 
@@ -300,100 +434,184 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_VPN) {
             if (resultCode == RESULT_OK) startTunnel();
-            else toast("اجازهٔ VPN داده نشد");
+            else toast(getString(R.string.msg_vpn_denied));
         }
     }
 
-    // ── rendering ──────────────────────────────────────────────────────────
-
-    private void render() {
-        boolean empty = store.profiles.isEmpty();
-        if (applying) Ui.setTextSmooth(versionText, "در حال به‌روزرسانی…");
-        else if (ConfigSync.updateAvailable) Ui.setTextSmooth(versionText, "نسخهٔ تازه آماده است");
-        else if (empty) Ui.setTextSmooth(versionText, "سروری دریافت نشده");
-        else Ui.setTextSmooth(versionText, persianCount(store.profiles.size()) + " سرور آماده");
-
-        setUpdateBarVisible(ConfigSync.updateAvailable);
-        setRefreshSpinning(applying);
-
-        String st = VpnTunnelService.state;
-        updateStatusUi(st);
-        handleStatePulse(st);
-        renderHero(st);
-        renderModes(st);
-        renderPing(st);
+    private void applyUpdate() {
+        if (applying) return;
+        applying = true;
+        render();
+        ConfigSync.syncNow(true);
     }
 
-    /** Ping button is offered only while connected; it is hidden again as soon as the tunnel is down. */
-    private void renderPing(String st) {
-        boolean show = VpnTunnelService.STATE_CONNECTED.equals(st);
-        if (show == pingShown) return;
-        pingShown = show;
-        pingBtn.animate().cancel();
-        if (show) {
-            pingBtn.setText("پینگ");
-            pingBtn.setEnabled(true);
-            pingBtn.setVisibility(View.VISIBLE);
-            pingBtn.setAlpha(0f);
-            pingBtn.setTranslationY(Ui.dp(this, 6));
-            pingBtn.animate().alpha(1f).translationY(0f).setDuration(260).setInterpolator(Ui.EASE).start();
-        } else {
-            pingBtn.animate().alpha(0f).setDuration(160).setInterpolator(Ui.SOFT)
-                    .withEndAction(new Runnable() {
-                        @Override public void run() { pingBtn.setVisibility(View.GONE); }
-                    }).start();
-        }
+    private void askNotify() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
     }
 
-    /** Measures the delay through the running tunnel off the UI thread and shows the result on the button. */
+    private void pickTheme(boolean light) {
+        if (Prefs.light(this) == light) return;
+        Prefs.light(this, light);
+        recreate();
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
+    private void pickLanguage(String tag) {
+        if (tag.equals(Prefs.locale(this))) return;
+        Prefs.locale(this, tag);
+        recreate();
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
+    private void resetStats() {
+        Prefs.resetCounters(this);
+        flushedDown = 0;
+        flushedUp = 0;
+        renderStats();
+        toast(getString(R.string.stats_reset_done));
+    }
+
     private void onPingClicked() {
-        if (pinging || !VpnTunnelService.STATE_CONNECTED.equals(VpnTunnelService.state)) return;
-        pinging = true;
+        if (pingRunning || !VpnTunnelService.STATE_CONNECTED.equals(VpnTunnelService.state)) return;
+        pingRunning = true;
         pingBtn.setEnabled(false);
-        pingBtn.setText("در حال سنجش…");
+        pingBtn.setText(getString(R.string.ping_running));
         new Thread(new Runnable() {
             @Override public void run() {
                 final long ms = VpnTunnelService.measureActivePing();
                 runOnUiThread(new Runnable() {
                     @Override public void run() {
-                        pinging = false;
+                        pingRunning = false;
                         pingBtn.setEnabled(true);
                         if (ms < 0) {
-                            pingBtn.setText("بی‌پاسخ");
-                            toast("این اتصال جواب نداد");
+                            pingBtn.setText(getString(R.string.ping_no_answer));
+                            toast(getString(R.string.msg_ping_failed));
                         } else {
-                            pingBtn.setText(persianCount((int) ms) + " ms");
+                            pingBtn.setText(num(ms) + " " + getString(R.string.unit_ms));
+                            Prefs.bestPing(MainActivity.this, ms);
+                            renderStats();
                         }
+                        Ui.bounce(pingBtn);
                     }
                 });
             }
         }, "rayvpn-ping").start();
     }
 
-    /** Hero shows the mode while idle, the progress while connecting, and country + IP once connected. */
-    private void renderHero(String st) {
+    // ── rendering ──────────────────────────────────────────────────────────
+
+    private String num(long value) {
+        return Ui.num(value, persian);
+    }
+
+    private String num(int value) {
+        return Ui.num(String.valueOf(value), persian);
+    }
+
+    private void render() {
+        String state = VpnTunnelService.state;
+        renderStatus(state);
+        renderCore(state);
+        renderHero(state);
+        renderModes(state);
+        renderPingChip(state);
+        renderServers();
+        renderUpdate();
+        renderSettingsState();
+        renderStats();
+        animateForState(state);
+    }
+
+    private void renderStatus(String state) {
+        int attr;
+        String text;
+        if (VpnTunnelService.STATE_CONNECTED.equals(state)) {
+            text = getString(R.string.state_connected);
+            attr = R.attr.rayAccent;
+        } else if (VpnTunnelService.STATE_CONNECTING.equals(state)) {
+            text = getString(R.string.state_connecting);
+            attr = R.attr.rayWarn;
+        } else if (VpnTunnelService.STATE_ERROR.equals(state)) {
+            text = getString(R.string.state_error);
+            attr = R.attr.rayDanger;
+        } else {
+            text = getString(R.string.state_ready);
+            attr = R.attr.rayMuted;
+        }
+        int color = Ui.color(this, attr);
+        if (lastPill == null || !text.equals(lastPill)) {
+            lastPill = text;
+            Ui.setTextSmooth(statusText, text);
+            statusText.setScaleX(0.94f);
+            statusText.setScaleY(0.94f);
+            statusText.animate().scaleX(1f).scaleY(1f)
+                    .setDuration(320).setInterpolator(Ui.SPRING).start();
+        }
+        if (color != lastPillColor) {
+            lastPillColor = color;
+            animateTextColor(statusText, color, 260);
+            animateDotColor(color, 260);
+        }
+    }
+
+    private void renderCore(String state) {
+        int style;
+        String label;
+        if (VpnTunnelService.STATE_CONNECTED.equals(state)) {
+            style = 2;
+            label = getString(R.string.action_disconnect);
+        } else if (VpnTunnelService.STATE_CONNECTING.equals(state)) {
+            style = 1;
+            label = getString(R.string.action_cancel);
+        } else {
+            style = 0;
+            label = getString(R.string.action_connect);
+        }
+        if (!label.contentEquals(connectCore.getText())) {
+            Ui.setTextSmooth(connectCore, label);
+        }
+        if (style == lastCoreStyle) return;
+        lastCoreStyle = style;
+        connectCore.setBackgroundResource(style == 2 ? R.drawable.core_on
+                : style == 1 ? R.drawable.core_busy : R.drawable.core_idle);
+        int tint = style == 2 ? Ui.color(this, R.attr.rayAccent)
+                : style == 1 ? Ui.color(this, R.attr.rayWarn)
+                : Ui.color(this, R.attr.rayTextDim);
+        connectCore.setTextColor(tint);
+        ringOuter.setBackgroundResource(style == 0 ? R.drawable.ring_hairline : R.drawable.ring_accent);
+        ringA.setBackgroundResource(style == 1 ? R.drawable.ring_pulse : R.drawable.ring_pulse_on);
+        ringB.setBackgroundResource(style == 1 ? R.drawable.ring_pulse : R.drawable.ring_pulse_on);
+        connectCore.setScaleX(0.93f);
+        connectCore.setScaleY(0.93f);
+        connectCore.animate().scaleX(1f).scaleY(1f)
+                .setDuration(420).setInterpolator(Ui.SPRING).start();
+    }
+
+    private void renderHero(String state) {
         String title;
         String sub;
-        if (VpnTunnelService.STATE_CONNECTED.equals(st)) {
+        if (VpnTunnelService.STATE_CONNECTED.equals(state)) {
             String ip = VpnTunnelService.exitIp;
             if (ip != null && !ip.isEmpty()) {
                 title = countryLabel();
                 sub = ip;
             } else if (VpnTunnelService.exitFailed) {
-                title = "کشور نامشخص";
-                sub = "IP نامشخص";
+                title = getString(R.string.country_unknown);
+                sub = getString(R.string.ip_unknown);
             } else {
-                title = "در حال بررسی";
-                sub = "در حال دریافت IP…";
+                title = getString(R.string.state_connected);
+                sub = getString(R.string.ip_fetching);
             }
-        } else if (VpnTunnelService.STATE_CONNECTING.equals(st)) {
-            title = "در حال اتصال";
-            String d = VpnTunnelService.detail;
-            sub = d == null || d.isEmpty() ? "انتخاب سرور…" : d;
-        } else if (VpnTunnelService.STATE_ERROR.equals(st)) {
-            title = "اتصال برقرار نشد";
-            String d = VpnTunnelService.detail;
-            sub = d == null ? "" : d;
+        } else if (VpnTunnelService.STATE_CONNECTING.equals(state)) {
+            title = getString(R.string.hero_connecting);
+            String detail = VpnTunnelService.detail;
+            sub = detail == null || detail.isEmpty() ? getString(R.string.svc_selecting) : detail;
+        } else if (VpnTunnelService.STATE_ERROR.equals(state)) {
+            title = getString(R.string.hero_error);
+            String detail = VpnTunnelService.detail;
+            sub = detail == null ? "" : detail;
         } else {
             title = modeTitle(mode);
             sub = modeHint(mode);
@@ -401,201 +619,348 @@ public class MainActivity extends Activity {
         String key = title + "|" + sub;
         if (key.equals(lastHeroKey)) return;
         lastHeroKey = key;
-        Ui.setTextSmooth(serverName, title);
-        Ui.setTextSmooth(detailText, sub);
+        Ui.setTextSmooth(heroTitle, title);
+        Ui.setTextSmooth(heroSub, sub);
     }
 
-    private static String countryLabel() {
+    private String countryLabel() {
         String country = VpnTunnelService.exitCountry;
         if (country != null && !country.isEmpty()) return country;
         String code = VpnTunnelService.exitCode;
         if (code != null && !code.isEmpty()) return code;
-        return "کشور نامشخص";
+        return getString(R.string.country_unknown);
     }
 
-    private static String modeTitle(ServerSelector.Mode m) {
+    private String modeTitle(ServerSelector.Mode m) {
         switch (m) {
-            case FAST: return "حالت سریع";
-            case BEST: return "حالت بهترین";
-            default: return "حالت متعادل";
+            case FAST: return getString(R.string.mode_fast_title);
+            case BEST: return getString(R.string.mode_best_title);
+            default: return getString(R.string.mode_balance_title);
         }
     }
 
-    private static String modeHint(ServerSelector.Mode m) {
+    private String modeHint(ServerSelector.Mode m) {
         switch (m) {
-            case FAST: return "اولین سروری که جواب بدهد";
-            case BEST: return "۱۰ سرور با کمترین پینگ، با تست سرعت";
-            default: return "سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه";
+            case FAST: return getString(R.string.mode_fast_hint);
+            case BEST: return getString(R.string.mode_best_hint);
+            default: return getString(R.string.mode_balance_hint);
         }
     }
 
-    private void renderModes(String st) {
-        boolean locked = busy(st);
-        if (mode == shownMode && locked == shownBusy) return;
-        shownMode = mode;
-        shownBusy = locked;
-        styleMode(modeFast, ServerSelector.Mode.FAST, locked);
-        styleMode(modeBalance, ServerSelector.Mode.BALANCE, locked);
-        styleMode(modeBest, ServerSelector.Mode.BEST, locked);
+    private void renderModes(String state) {
+        boolean locked = busy(state);
+        style(modeFast, mode == ServerSelector.Mode.FAST, locked);
+        style(modeBalance, mode == ServerSelector.Mode.BALANCE, locked);
+        style(modeBest, mode == ServerSelector.Mode.BEST, locked);
     }
 
-    private void styleMode(TextView view, ServerSelector.Mode m, boolean locked) {
-        boolean selected = m == mode;
-        view.setBackgroundResource(selected ? R.drawable.bg_btn_primary : R.drawable.bg_btn_ghost);
-        animateTextColor(view, selected ? C_INK : C_TEXT_DIM, 240);
+    private void style(RayText view, boolean selected, boolean locked) {
+        view.setBackgroundResource(selected ? R.drawable.bg_segment_on : R.drawable.bg_segment);
+        int color = Ui.color(this, selected ? R.attr.rayAccent : R.attr.rayTextDim);
+        if (view.getCurrentTextColor() != color) animateTextColor(view, color, 220);
         view.setEnabled(!locked);
-        view.animate().alpha(locked ? 0.5f : 1f).setDuration(240).setInterpolator(Ui.SOFT).start();
+        view.animate().alpha(locked ? 0.45f : 1f).setDuration(220).setInterpolator(Ui.SOFT).start();
     }
 
-    // ── state driven look & feel ───────────────────────────────────────────
+    private void renderPingChip(String state) {
+        boolean show = VpnTunnelService.STATE_CONNECTED.equals(state);
+        if (show) {
+            if (pingBtn.getVisibility() != View.VISIBLE) {
+                pingBtn.setVisibility(View.VISIBLE);
+                pingBtn.setAlpha(0f);
+                pingBtn.setTranslationY(Ui.dp(this, 5));
+                pingBtn.animate().alpha(1f).translationY(0f)
+                        .setDuration(240).setInterpolator(Ui.EASE).start();
+                if (!pingRunning) pingBtn.setText(getString(R.string.ping_action));
+            }
+        } else if (pingBtn.getVisibility() == View.VISIBLE) {
+            pingBtn.animate().alpha(0f).setDuration(140)
+                    .withEndAction(new Runnable() {
+                        @Override public void run() { pingBtn.setVisibility(View.GONE); }
+                    }).start();
+        }
+    }
 
-    private void updateStatusUi(String st) {
-        boolean connecting = VpnTunnelService.STATE_CONNECTING.equals(st);
-        boolean connected = VpnTunnelService.STATE_CONNECTED.equals(st);
-        boolean error = VpnTunnelService.STATE_ERROR.equals(st);
+    private void renderServers() {
+        int count = store.profiles.size();
+        String text = count == 0 ? getString(R.string.servers_empty)
+                : getString(R.string.servers_ready, num(count));
+        Ui.setTextSmooth(serversCount, text);
+        Ui.setTextSmooth(refreshText, applying ? getString(R.string.refresh_running)
+                : getString(R.string.refresh_action));
+        setRefreshSpinning(applying);
+    }
 
-        String pillText;
-        int pillColor;
-        String btnText;
-        int btnColor;
-        int btnBg;
-        int glowRes;
+    private void renderUpdate() {
+        boolean show = ConfigSync.updateAvailable;
+        if (show != updateBarShown) {
+            updateBarShown = show;
+            updateBar.animate().cancel();
+            if (show) {
+                updateBar.setVisibility(View.VISIBLE);
+                updateBar.setAlpha(0f);
+                updateBar.setTranslationY(-Ui.dp(this, 8));
+                updateBar.animate().alpha(1f).translationY(0f)
+                        .setDuration(280).setInterpolator(Ui.EASE).start();
+            } else {
+                updateBar.animate().alpha(0f).translationY(-Ui.dp(this, 8)).setDuration(160)
+                        .withEndAction(new Runnable() {
+                            @Override public void run() { updateBar.setVisibility(View.GONE); }
+                        }).start();
+            }
+        }
+    }
+
+    private void renderSettingsState() {
+        boolean light = Prefs.light(this);
+        themeDark.setBackgroundResource(light ? R.drawable.bg_segment : R.drawable.bg_segment_on);
+        themeLight.setBackgroundResource(light ? R.drawable.bg_segment_on : R.drawable.bg_segment);
+        themeDark.setTextColor(Ui.color(this, light ? R.attr.rayTextDim : R.attr.rayAccent));
+        themeLight.setTextColor(Ui.color(this, light ? R.attr.rayAccent : R.attr.rayTextDim));
+
+        boolean fa = "fa".equals(Prefs.locale(this));
+        langFa.setBackgroundResource(fa ? R.drawable.bg_segment_on : R.drawable.bg_segment);
+        langEn.setBackgroundResource(fa ? R.drawable.bg_segment : R.drawable.bg_segment_on);
+        langFa.setTextColor(Ui.color(this, fa ? R.attr.rayAccent : R.attr.rayTextDim));
+        langEn.setTextColor(Ui.color(this, fa ? R.attr.rayTextDim : R.attr.rayAccent));
+
+        notifToggle.setChecked(Prefs.notifications(this), false);
+    }
+
+    /** Live numbers on the connect page and the aggregation on the stats page. */
+    private void updateLive() {
+        String state = VpnTunnelService.state;
+        boolean connected = VpnTunnelService.STATE_CONNECTED.equals(state);
         if (connected) {
-            pillText = "وصل";
-            pillColor = C_ACCENT;
-            btnText = "قطع";
-            btnColor = C_TEXT;
-            btnBg = R.drawable.bg_connect_off;
-            glowRes = R.drawable.bg_glow_danger;
-        } else if (connecting) {
-            pillText = "در حال اتصال";
-            pillColor = C_WARN;
-            btnText = "اتصال";
-            btnColor = C_INK;
-            btnBg = R.drawable.bg_connect_wait;
-            glowRes = R.drawable.bg_glow;
-        } else if (error) {
-            pillText = "خطا";
-            pillColor = C_DANGER;
-            btnText = "اتصال";
-            btnColor = C_INK;
-            btnBg = R.drawable.bg_connect;
-            glowRes = R.drawable.bg_glow;
+            long down = VpnTunnelService.bytesDown;
+            long up = VpnTunnelService.bytesUp;
+            long started = VpnTunnelService.sessionStartedAt;
+            long elapsed = started <= 0 ? 0 : System.currentTimeMillis() - started;
+            setLive(valDown, Ui.bytes(down, persian));
+            setLive(valUp, Ui.bytes(up, persian));
+            setLive(valTime, Ui.duration(elapsed, persian));
+            if (graph.getVisibility() == View.VISIBLE) {
+                graph.push(VpnTunnelService.speedDown, VpnTunnelService.speedUp);
+            }
+            setLive(speedDown, getString(R.string.stat_download) + " · "
+                    + Ui.speed(VpnTunnelService.speedDown, persian));
+            setLive(speedUp, getString(R.string.stat_upload) + " · "
+                    + Ui.speed(VpnTunnelService.speedUp, persian));
         } else {
-            pillText = "آماده";
-            pillColor = C_MUTED;
-            btnText = "اتصال";
-            btnColor = C_INK;
-            btnBg = R.drawable.bg_connect;
-            glowRes = R.drawable.bg_glow;
+            setLive(valDown, getString(R.string.dash));
+            setLive(valUp, getString(R.string.dash));
+            setLive(valTime, getString(R.string.dash));
         }
-
-        if (lastPillText == null || !pillText.equals(lastPillText)) {
-            lastPillText = pillText;
-            Ui.setTextSmooth(statusPill, pillText);
-            statusPill.setScaleX(0.88f);
-            statusPill.setScaleY(0.88f);
-            statusPill.animate().scaleX(1f).scaleY(1f)
-                    .setDuration(340).setInterpolator(Ui.SPRING).start();
-        }
-        if (pillColor != lastPillColor) {
-            animateTextColor(statusPill, pillColor, 280);
-            animateDotColor(pillColor, 280);
-            lastPillColor = pillColor;
-        }
-
-        if (!btnText.equals(connectBtn.getText().toString())) {
-            Ui.setTextSmooth(connectBtn, btnText);
-        }
-        if (btnColor != lastBtnColor) {
-            connectBtn.setTextColor(btnColor);
-            lastBtnColor = btnColor;
-        }
-        if (btnBg != lastBtnBg) {
-            lastBtnBg = btnBg;
-            connectBtn.setBackgroundResource(btnBg);
-            connectBtn.setScaleX(0.9f);
-            connectBtn.setScaleY(0.9f);
-            connectBtn.animate().scaleX(1f).scaleY(1f)
-                    .setDuration(430).setInterpolator(Ui.SPRING).start();
-        }
-        if (glowRes != lastGlowRes) {
-            lastGlowRes = glowRes;
-            glow.setBackgroundResource(glowRes);
-        }
-
-        syncConnectAnim(connecting);
-        setSpinning(connecting);
-        setBreathing(connected || connecting);
+        renderStats();
     }
 
-    private void handleStatePulse(String st) {
+    private void setLive(TextView view, String text) {
+        if (view == null) return;
+        if (!text.contentEquals(view.getText())) view.setText(text);
+    }
+
+    private void renderStats() {
+        if (graph == null) return;
+        syncSessionBase();
+        boolean connected = VpnTunnelService.STATE_CONNECTED.equals(VpnTunnelService.state);
+        long down = VpnTunnelService.bytesDown;
+        long up = VpnTunnelService.bytesUp;
+        long started = VpnTunnelService.sessionStartedAt;
+        long elapsed = connected && started > 0 ? System.currentTimeMillis() - started : 0;
+
+        setLive(sessDown, Ui.bytes(down, persian));
+        setLive(sessUp, Ui.bytes(up, persian));
+        setLive(sessTime, elapsed > 0 ? Ui.duration(elapsed, persian) : getString(R.string.dash));
+
+        long totalDown = Prefs.totalDown(this) + (down - flushedDown);
+        long totalUp = Prefs.totalUp(this) + (up - flushedUp);
+        setLive(totalData, Ui.bytes(Math.max(0, totalDown) + Math.max(0, totalUp), persian));
+        setLive(totalSessions, num(Prefs.sessions(this)));
+        int best = Prefs.bestPing(this);
+        setLive(totalPing, best < 0 ? getString(R.string.dash)
+                : num(best) + " " + getString(R.string.unit_ms));
+
+        if (connected) {
+            if (!sessionCounted) {
+                sessionCounted = true;
+                Prefs.addSession(this);
+            }
+            if (System.currentTimeMillis() - lastFlush > 5000L) flushTotals();
+        } else if (sessionCounted) {
+            flushTotals();
+        }
+    }
+
+    private void flushTotals() {
+        lastFlush = System.currentTimeMillis();
+        syncSessionBase();
+        long down = VpnTunnelService.bytesDown - flushedDown;
+        long up = VpnTunnelService.bytesUp - flushedUp;
+        if (down > 0 || up > 0) {
+            Prefs.addTotals(this, down, up);
+            flushedDown = VpnTunnelService.bytesDown;
+            flushedUp = VpnTunnelService.bytesUp;
+        }
+        if (!busy(VpnTunnelService.state)) sessionCounted = false;
+    }
+
+    /** Counters restart at zero with every session; forget the old baseline then. */
+    private void syncSessionBase() {
+        if (VpnTunnelService.bytesDown < flushedDown || VpnTunnelService.bytesUp < flushedUp) {
+            flushedDown = 0L;
+            flushedUp = 0L;
+        }
+    }
+
+    // ── tabs ───────────────────────────────────────────────────────────────
+
+    private void renderTabs(boolean animate) {
+        View[] pages = {tabConnect, tabStats, tabSettings};
+        View[] items = {navConnect, navStats, navSettings};
+        ImageView[] icons = {navConnectIcon, navStatsIcon, navSettingsIcon};
+        RayText[] labels = {navConnectText, navStatsText, navSettingsText};
+
+        for (int i = 0; i < pages.length; i++) {
+            boolean active = i == tab;
+            View page = pages[i];
+            if (active) {
+                if (page.getVisibility() != View.VISIBLE) {
+                    page.setVisibility(View.VISIBLE);
+                    if (animate) {
+                        page.setAlpha(0f);
+                        page.setTranslationY(Ui.dp(this, 10));
+                        page.animate().alpha(1f).translationY(0f)
+                                .setDuration(240).setInterpolator(Ui.EASE).start();
+                    } else {
+                        page.setAlpha(1f);
+                    }
+                }
+            } else {
+                page.animate().cancel();
+                page.setAlpha(1f);
+                page.setVisibility(View.GONE);
+            }
+            int tint = Ui.color(this, active ? R.attr.rayAccent : R.attr.rayMuted);
+            icons[i].setColorFilter(tint);
+            int textColor = Ui.color(this, active ? R.attr.rayText : R.attr.rayMuted);
+            if (labels[i].getCurrentTextColor() != textColor) animateTextColor(labels[i], textColor, 200);
+            labels[i].weight(active ? Ui.W_SEMIBOLD : Ui.W_MEDIUM);
+            icons[i].animate().scaleX(active ? 1.06f : 1f).scaleY(active ? 1.06f : 1f)
+                    .setDuration(220).setInterpolator(Ui.SPRING).start();
+        }
+        items[tab].setSelected(true);
+        if (tab == TAB_STATS && !animate) graph.clear();
+    }
+
+    // ── motion ─────────────────────────────────────────────────────────────
+
+    private void animateForState(String state) {
+        boolean connecting = VpnTunnelService.STATE_CONNECTING.equals(state);
+        boolean connected = VpnTunnelService.STATE_CONNECTED.equals(state);
+
+        setSpin(connecting);
+        setBreathe(connecting || connected);
+        setPulse(connecting || connected);
+
         if (lastState == null) {
-            lastState = st;
+            lastState = state;
             return;
         }
-        if (lastState.equals(st)) return;
-        lastState = st;
-        if (VpnTunnelService.STATE_CONNECTED.equals(st)) successPulse();
+        if (!lastState.equals(state)) {
+            lastState = state;
+            if (connected) successPulse();
+            if (!connected) graph.clear();
+        }
     }
 
-    private void successPulse() {
-        if (connectPulse) return;
-        ringB.setVisibility(View.VISIBLE);
-        ringB.setAlpha(0.9f);
-        ringB.setScaleX(1f);
-        ringB.setScaleY(1f);
-        ringB.animate().scaleX(1.9f).scaleY(1.9f).alpha(0f)
-                .setDuration(760).setInterpolator(Ui.SOFT)
-                .withEndAction(new Runnable() {
-                    @Override public void run() {
-                        if (!connectPulse) {
-                            ringB.setVisibility(View.GONE);
-                            ringB.setAlpha(1f);
-                        }
+    private void setSpin(boolean on) {
+        if (on == spinning) return;
+        spinning = on;
+        if (spin != null) {
+            spin.cancel();
+            spin = null;
+        }
+        if (on) {
+            spinArc.setVisibility(View.VISIBLE);
+            spinArc.setAlpha(0f);
+            spinArc.animate().alpha(1f).setDuration(240).start();
+            spin = ObjectAnimator.ofFloat(spinArc, "rotation", 0f, 360f);
+            spin.setDuration(1250);
+            spin.setRepeatCount(ValueAnimator.INFINITE);
+            spin.setInterpolator(new LinearInterpolator());
+            spin.start();
+        } else {
+            spinArc.setVisibility(View.GONE);
+            spinArc.setRotation(0f);
+        }
+    }
+
+    private void setBreathe(boolean on) {
+        if (on == breathing) return;
+        breathing = on;
+        if (breathe != null) {
+            breathe.cancel();
+            breathe = null;
+        }
+        if (on) {
+            breathe = ObjectAnimator.ofFloat(glow, "alpha", 0.45f, 0.95f);
+            breathe.setDuration(1900);
+            breathe.setRepeatCount(ValueAnimator.INFINITE);
+            breathe.setRepeatMode(ValueAnimator.REVERSE);
+            breathe.setInterpolator(Ui.SWING);
+            breathe.start();
+        } else {
+            glow.setBackgroundResource(R.drawable.glow);
+            glow.animate().alpha(0.75f).setDuration(300).setInterpolator(Ui.SOFT).start();
+        }
+    }
+
+    private void setPulse(boolean on) {
+        if (on == pulsing) return;
+        pulsing = on;
+        if (on) {
+            startRing(ringA, 0);
+            startRing(ringB, 620);
+        } else {
+            ringA.animate().cancel();
+            ringB.animate().cancel();
+            ringA.setVisibility(View.GONE);
+            ringB.setVisibility(View.GONE);
+            ringA.setAlpha(1f);
+            ringB.setAlpha(1f);
+            ringA.setScaleX(1f);
+            ringA.setScaleY(1f);
+            ringB.setScaleX(1f);
+            ringB.setScaleY(1f);
+        }
+    }
+
+    private void startRing(final View ring, long delay) {
+        ring.setVisibility(View.VISIBLE);
+        ring.setScaleX(0.86f);
+        ring.setScaleY(0.86f);
+        ring.setAlpha(0.85f);
+        ring.animate().scaleX(1.24f).scaleY(1.24f).alpha(0f)
+                .setStartDelay(delay)
+                .setDuration(2150)
+                .setInterpolator(new LinearInterpolator())
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(Animator animation) {
+                        if (pulsing) startRing(ring, 0);
                     }
                 }).start();
     }
 
-    private void setBreathing(boolean on) {
-        if (on == breathing) return;
-        breathing = on;
-        if (breatheAnim != null) {
-            breatheAnim.cancel();
-            breatheAnim = null;
-        }
-        if (on) {
-            breatheAnim = ObjectAnimator.ofFloat(glow, "alpha", 0.45f, 1f);
-            breatheAnim.setDuration(1750);
-            breatheAnim.setRepeatCount(ValueAnimator.INFINITE);
-            breatheAnim.setRepeatMode(ValueAnimator.REVERSE);
-            breatheAnim.setInterpolator(Ui.SWING);
-            breatheAnim.start();
-        } else {
-            glow.animate().alpha(0.7f).setDuration(320).setInterpolator(Ui.SOFT).start();
-        }
-    }
-
-    private void setSpinning(boolean on) {
-        if (on == spinning) return;
-        spinning = on;
-        if (spinAnim != null) {
-            spinAnim.cancel();
-            spinAnim = null;
-        }
-        if (on) {
-            spinRing.setVisibility(View.VISIBLE);
-            spinRing.setAlpha(0f);
-            spinRing.animate().alpha(1f).setDuration(280).start();
-            spinAnim = ObjectAnimator.ofFloat(spinRing, "rotation", 0f, 360f);
-            spinAnim.setDuration(1500);
-            spinAnim.setRepeatCount(ValueAnimator.INFINITE);
-            spinAnim.setInterpolator(new LinearInterpolator());
-            spinAnim.start();
-        } else {
-            spinRing.setVisibility(View.GONE);
-            spinRing.setRotation(0f);
-        }
+    private void successPulse() {
+        glow.setBackgroundResource(R.drawable.glow);
+        glow.setAlpha(1f);
+        glow.animate().alpha(0.75f).setDuration(760).setInterpolator(Ui.SOFT).start();
+        connectCore.setScaleX(0.9f);
+        connectCore.setScaleY(0.9f);
+        connectCore.animate().scaleX(1f).scaleY(1f)
+                .setDuration(520).setInterpolator(Ui.SPRING).start();
+        ringOuter.setAlpha(0.4f);
+        ringOuter.animate().alpha(1f).setDuration(700).setInterpolator(Ui.SOFT).start();
     }
 
     private void setRefreshSpinning(boolean on) {
@@ -607,31 +972,30 @@ public class MainActivity extends Activity {
         }
         if (on) {
             refreshAnim = ObjectAnimator.ofFloat(refreshIcon, "rotation", 0f, 360f);
-            refreshAnim.setDuration(1100);
+            refreshAnim.setDuration(950);
             refreshAnim.setRepeatCount(ValueAnimator.INFINITE);
             refreshAnim.setInterpolator(new LinearInterpolator());
             refreshAnim.start();
         } else {
-            refreshIcon.animate().rotation(0f).setDuration(220).start();
+            refreshIcon.animate().rotation(0f).setDuration(200).start();
         }
     }
 
-    private void setUpdateBarVisible(boolean visible) {
-        if (visible == updateBarShown) return;
-        updateBarShown = visible;
-        updateBar.animate().cancel();
-        if (visible) {
-            updateBar.setVisibility(View.VISIBLE);
-            updateBar.setAlpha(0f);
-            updateBar.setTranslationY(-Ui.dp(this, 10));
-            updateBar.animate().alpha(1f).translationY(0f)
-                    .setDuration(300).setInterpolator(Ui.EASE).start();
-        } else {
-            updateBar.animate().alpha(0f).translationY(-Ui.dp(this, 10))
-                    .setDuration(180).setInterpolator(Ui.SOFT)
-                    .withEndAction(new Runnable() {
-                        @Override public void run() { updateBar.setVisibility(View.GONE); }
-                    }).start();
+    private void playEntrance() {
+        header.setAlpha(0f);
+        header.setTranslationY(-Ui.dp(this, 8));
+        header.animate().alpha(1f).translationY(0f)
+                .setDuration(420).setInterpolator(Ui.EASE).start();
+
+        connectWrap.setAlpha(0f);
+        connectWrap.setScaleX(0.94f);
+        connectWrap.setScaleY(0.94f);
+        connectWrap.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .setStartDelay(90).setDuration(560).setInterpolator(Ui.EASE).start();
+
+        View[] rest = {heroTitle, heroSub, findViewById(R.id.liveRow), findViewById(R.id.modeBar), footerHint};
+        for (int i = 0; i < rest.length; i++) {
+            Ui.fadeInUp(rest[i], 190 + i * 55L);
         }
     }
 
@@ -649,109 +1013,16 @@ public class MainActivity extends Activity {
     }
 
     private void animateDotColor(int to, long duration) {
-        if (dotColor == to) return;
-        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), dotColor, to);
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(),
+                Ui.color(this, R.attr.rayMuted), to);
         anim.setDuration(duration);
         anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override public void onAnimationUpdate(ValueAnimator a) {
-                dotColor = (Integer) a.getAnimatedValue();
-                if (statusDot.getBackground() != null) statusDot.getBackground().setTint(dotColor);
+                int color = (Integer) a.getAnimatedValue();
+                if (statusDot.getBackground() != null) statusDot.getBackground().setTint(color);
             }
         });
         anim.start();
-    }
-
-    private void playEntrance() {
-        float d = Ui.dp(this, 14);
-        header.setAlpha(0f);
-        header.setTranslationY(-d * 0.6f);
-        header.animate().alpha(1f).translationY(0f)
-                .setStartDelay(30).setDuration(420).setInterpolator(Ui.EASE).start();
-
-        hero.setAlpha(0f);
-        hero.setTranslationY(d);
-        hero.setScaleX(0.94f);
-        hero.setScaleY(0.94f);
-        hero.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
-                .setStartDelay(110).setDuration(540).setInterpolator(Ui.EASE).start();
-
-        actions.setAlpha(0f);
-        actions.setTranslationY(d);
-        actions.animate().alpha(1f).translationY(0f)
-                .setStartDelay(200).setDuration(460).setInterpolator(Ui.EASE).start();
-    }
-
-    private void syncConnectAnim(boolean connecting) {
-        if (connecting) {
-            if (connectPulse) return;
-            connectPulse = true;
-            startRing(ringA, 0);
-            startRing(ringB, 150);
-            return;
-        }
-        if (!connectPulse) return;
-        connectPulse = false;
-        ringA.animate().setListener(null);
-        ringB.animate().setListener(null);
-        ringA.animate().cancel();
-        ringB.animate().cancel();
-        ringA.setVisibility(View.GONE);
-        ringB.setVisibility(View.GONE);
-        ringA.setAlpha(1f);
-        ringB.setAlpha(1f);
-        ringA.setScaleX(1f);
-        ringA.setScaleY(1f);
-        ringB.setScaleX(1f);
-        ringB.setScaleY(1f);
-    }
-
-    private void startRing(final View ring, long delay) {
-        ring.setVisibility(View.VISIBLE);
-        ring.setScaleX(0.84f);
-        ring.setScaleY(0.84f);
-        ring.setAlpha(0.9f);
-        ring.post(new Runnable() {
-            @Override
-            public void run() {
-                ring.setPivotX(ring.getWidth() / 2f);
-                ring.setPivotY(ring.getHeight() / 2f);
-                pulse(ring, delay);
-            }
-        });
-    }
-
-    private void pulse(final View ring, long delay) {
-        ring.animate().setListener(null);
-        ring.animate().cancel();
-        ring.setScaleX(0.84f);
-        ring.setScaleY(0.84f);
-        ring.setAlpha(0.9f);
-        ring.animate()
-                .scaleX(1.12f)
-                .scaleY(1.12f)
-                .alpha(0.05f)
-                .setStartDelay(delay)
-                .setDuration(420)
-                .setInterpolator(new LinearInterpolator())
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (connectPulse && ring.getVisibility() == View.VISIBLE) pulse(ring, 0);
-                    }
-                })
-                .start();
-    }
-
-    /** Persian digits for short counters. */
-    private static String persianCount(int value) {
-        String digits = "۰۱۲۳۴۵۶۷۸۹";
-        String raw = String.valueOf(value);
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < raw.length(); i++) {
-            char ch = raw.charAt(i);
-            out.append(ch >= '0' && ch <= '9' ? digits.charAt(ch - '0') : ch);
-        }
-        return out.toString();
     }
 
     private void toast(String text) {

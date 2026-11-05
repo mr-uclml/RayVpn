@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- ── text ──────────────────────────────────────────────── -->
+    <style name="Text">
+        <item name="android:textColor">?attr/rayText</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="Text.Brand">
+        <item name="android:textSize">16.5sp</item>
+        <item name="app:rayWeight">semibold</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <style name="Text.Tag">
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <style name="Text.Pill">
+        <item name="android:textSize">11.5sp</item>
+        <item name="android:textColor">?attr/rayTextDim</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="Text.Hero">
+        <item name="android:textSize">21sp</item>
+        <item name="app:rayWeight">semibold</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="Text.HeroSub">
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">regular</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="Text.Value">
+        <item name="android:textSize">16sp</item>
+        <item name="app:rayWeight">semibold</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="Text.Value.Big">
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="Text.Label">
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:letterSpacing">0.08</item>
+    </style>
+
+    <style name="Text.Section">
+        <item name="android:textSize">10.5sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:letterSpacing">0.12</item>
+    </style>
+
+    <style name="Text.Row">
+        <item name="android:textSize">14sp</item>
+        <item name="app:rayWeight">medium</item>
+    </style>
+
+    <style name="Text.RowSub">
+        <item name="android:textSize">11.5sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">regular</item>
+    </style>
+
+    <style name="Text.Tab">
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">?attr/rayMuted</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="Text.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">?attr/rayAccentInk</item>
+        <item name="app:rayWeight">semibold</item>
+    </style>
+
+    <style name="Text.ButtonGhost">
+        <item name="android:textSize">13.5sp</item>
+        <item name="android:textColor">?attr/rayTextDim</item>
+        <item name="app:rayWeight">medium</item>
+    </style>
+
+    <style name="Text.Segment">
+        <item name="android:textSize">13sp</item>
+        <item name="app:rayWeight">medium</item>
+    </style>
+
+    <!-- ── widgets ───────────────────────────────────────────── -->
+    <style name="Segment">
+        <item name="android:layout_height">40dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:background">@drawable/bg_segment</item>
+        <item name="android:textColor">?attr/rayTextDim</item>
+        <item name="android:textSize">13sp</item>
+        <item name="app:rayWeight">medium</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- window / activity transitions -->
+    <style name="Anim.Ray.Window" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/act_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/act_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/act_back_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/act_back_out</item>
+    </style>
+
+</resources>

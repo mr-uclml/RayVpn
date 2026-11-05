@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_pad">20dp</dimen>
+    <dimen name="card_radius">22dp</dimen>
+    <dimen name="card_pad">18dp</dimen>
+    <dimen name="gap">12dp</dimen>
+    <dimen name="gap_lg">18dp</dimen>
+    <dimen name="hairline">1dp</dimen>
+    <dimen name="connect_size">236dp</dimen>
+    <dimen name="connect_core">128dp</dimen>
+    <dimen name="nav_height">62dp</dimen>
+</resources>

@@ -25,6 +25,29 @@ public final class XrayConfigBuilder {
         }
     }
 
+    /**
+     * Turns on the core counters the UI reads for its live traffic numbers.
+     * Xray only creates its stats manager when a "stats" object exists, and the
+     * outbound counters themselves need the matching policy switches.
+     */
+    private static void enableStats(JSONObject root) throws JSONException {
+        if (!root.has("stats")) root.put("stats", new JSONObject());
+        JSONObject system = new JSONObject();
+        system.put("statsInboundUplink", true);
+        system.put("statsInboundDownlink", true);
+        system.put("statsOutboundUplink", true);
+        system.put("statsOutboundDownlink", true);
+        JSONObject level = new JSONObject();
+        level.put("statsUserUplink", true);
+        level.put("statsUserDownlink", true);
+        JSONObject levels = new JSONObject();
+        levels.put("0", level);
+        JSONObject policy = new JSONObject();
+        policy.put("levels", levels);
+        policy.put("system", system);
+        root.put("policy", policy);
+    }
+
     public static String buildTunnel(Profile p) throws Exception {
         return buildTunnel(p, null);
     }
@@ -37,6 +60,7 @@ public final class XrayConfigBuilder {
             }
             JSONObject root = new JSONObject(p.rawJson);
             injectTun(root);
+            enableStats(root);
             if (socks != null) {
                 JSONArray inbounds = root.getJSONArray("inbounds");
                 inbounds.put(socksInbound(socks, "api-in"));
@@ -47,6 +71,7 @@ public final class XrayConfigBuilder {
         JSONObject log = new JSONObject();
         log.put("loglevel", "warning");
         root.put("log", log);
+        enableStats(root);
 
         JSONObject dns = new JSONObject();
         dns.put("queryStrategy", "UseIPv4");
