@@ -97,53 +97,41 @@ else
 fi
 
 say "package"
-python3 - "$OUT" "$SRC" "$APK_OUT.unsigned" <<'PY'
+python3 - "$OUT" "$SRC" "$ROOT" "$APK_OUT.unsigned" <<'PY'
 import os, sys, zipfile
-out, src, target = sys.argv[1:4]
-zf = zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED)
+out, src, root, target = sys.argv[1:5]
+sys.path.insert(0, os.path.join(root, 'tools'))
+from apkpack import ApkWriter     # alignment-aware zip writer, see tools/apkpack.py
+
+w = ApkWriter(target)
 base = zipfile.ZipFile(os.path.join(out, 'base.apk'))
 for entry in base.infolist():
     if entry.filename.endswith('/'):
         continue
-    zf.writestr(entry, base.read(entry.filename))
+    w.add(entry.filename, base.read(entry.filename), entry.compress_type)
 
-def add(path, name):
-    info = zipfile.ZipInfo(name, date_time=(2024, 1, 1, 0, 0, 0))
-    info.compress_type = zipfile.ZIP_DEFLATED
-    with open(path, 'rb') as fh:
-        zf.writestr(info, fh.read())
-
-add(os.path.join(out, 'dex/classes.dex'), 'classes.dex')
-for root, _, files in os.walk(os.path.join(src, 'assets')):
-    for f in files:
-        p = os.path.join(root, f)
-        add(p, 'assets/' + os.path.relpath(p, os.path.join(src, 'assets')))
-for f in os.listdir(os.path.join(out, 'aar/assets')):
-    add(os.path.join(out, 'aar/assets', f), 'assets/' + f)
+w.add_file('classes.dex', os.path.join(out, 'dex/classes.dex'))
+for folder, _, files in os.walk(os.path.join(src, 'assets')):
+    for name in files:
+        full = os.path.join(folder, name)
+        w.add_file('assets/' + os.path.relpath(full, os.path.join(src, 'assets')), full)
+for name in os.listdir(os.path.join(out, 'aar/assets')):
+    w.add_file('assets/' + name, os.path.join(out, 'aar/assets', name))
 for abi in ('armeabi-v7a', 'arm64-v8a'):
-    add(os.path.join(out, 'aar/jni', abi, 'libgojni.so'), 'lib/%s/libgojni.so' % abi)
-zf.close()
-print('packed', os.path.getsize(target), 'bytes')
+    w.add_file('lib/%s/libgojni.so' % abi,
+               os.path.join(out, 'aar/jni', abi, 'libgojni.so'))
+size = w.close()
+print('packed', size, 'bytes,', len(w.central), 'entries')
 PY
 
 say "sign (APK Signature Scheme v2)"
 KEY_PEM="$OUT/key.pem"; CERT_PEM="$OUT/cert.pem"
-if command -v keytool >/dev/null 2>&1; then
-    KEYTOOL=keytool
-else
-    KEYTOOL="$(dirname "$(command -v "$JAVA")")/keytool"
-fi
-"$KEYTOOL" -importkeystore -noprompt -srckeystore "$KEYSTORE" -srcstorepass "$STORE_PASS" \
-    -srcalias "$KEY_ALIAS" -srcstoretype JKS -destkeystore "$OUT/ray.p12" \
-    -deststoretype PKCS12 -deststorepass "$STORE_PASS" -destkeypass "$STORE_PASS" >/dev/null
-openssl pkcs12 -in "$OUT/ray.p12" -passin "pass:$STORE_PASS" -nodes -nocerts 2>/dev/null \
-    | openssl pkey -out "$KEY_PEM"
-"$KEYTOOL" -exportcert -keystore "$KEYSTORE" -alias "$KEY_ALIAS" -storepass "$STORE_PASS" \
-    -rfc -file "$CERT_PEM" >/dev/null
+python3 "$ROOT/tools/jks.py" "$KEYSTORE" "$KEY_ALIAS" "$STORE_PASS" "$OUT" "$KEY_PASS"
 
 node "$ROOT/tools/v2sign.mjs" "$APK_OUT.unsigned" "$APK_OUT" "$KEY_PEM" "$CERT_PEM"
-rm -f "$APK_OUT.unsigned" "$OUT/ray.p12" "$KEY_PEM" "$CERT_PEM"
+rm -f "$APK_OUT.unsigned" "$KEY_PEM" "$CERT_PEM"
 
 say "verify"
 python3 "$ROOT/tools/apkverify.py" "$APK_OUT"
+python3 "$ROOT/tools/apkcheck.py" "$APK_OUT"
 say "done: $APK_OUT"
