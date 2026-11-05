@@ -1,37 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#070B16</color>
-    <color name="bg2">#0B1222</color>
-    <color name="bg3">#050810</color>
+    <!-- ── dark (default) ─────────────────────────────────────── -->
+    <color name="d_bg">#08090C</color>
+    <color name="d_bg2">#0C0E13</color>
+    <color name="d_surface">#101217</color>
+    <color name="d_surface2">#16191F</color>
+    <color name="d_line">#23262E</color>
+    <color name="d_line_soft">#181B21</color>
+    <color name="d_text">#F4F6F9</color>
+    <color name="d_text_dim">#B4BCC8</color>
+    <color name="d_muted">#6F7783</color>
+    <color name="d_accent">#55E6BB</color>
+    <color name="d_accent_ink">#04211A</color>
+    <color name="d_accent_soft">#1F55E6BB</color>
+    <color name="d_accent_ghost">#1455E6BB</color>
+    <color name="d_glow">#3A55E6BB</color>
+    <color name="d_danger">#FF6B7D</color>
+    <color name="d_warn">#F5C77E</color>
 
-    <color name="card">#121B2D</color>
-    <color name="card_hi">#182339</color>
-    <color name="card_lo">#0E1626</color>
+    <!-- ── light ──────────────────────────────────────────────── -->
+    <color name="l_bg">#F6F7F9</color>
+    <color name="l_bg2">#FFFFFF</color>
+    <color name="l_surface">#FFFFFF</color>
+    <color name="l_surface2">#F1F4F7</color>
+    <color name="l_line">#E1E5EA</color>
+    <color name="l_line_soft">#EDF0F4</color>
+    <color name="l_text">#0E1116</color>
+    <color name="l_text_dim">#414954</color>
+    <color name="l_muted">#7E8794</color>
+    <color name="l_accent">#0E9C75</color>
+    <color name="l_accent_ink">#FFFFFF</color>
+    <color name="l_accent_soft">#1F0E9C75</color>
+    <color name="l_accent_ghost">#140E9C75</color>
+    <color name="l_glow">#2E0E9C75</color>
+    <color name="l_danger">#D53B50</color>
+    <color name="l_warn">#A9750F</color>
 
-    <color name="stroke">#223054</color>
-    <color name="stroke_soft">#1A2440</color>
-
-    <color name="accent">#35F0B0</color>
-    <color name="accent_dim">#18BE8E</color>
-    <color name="accent_deep">#0E8C6B</color>
-    <color name="accent_ink">#032018</color>
-    <color name="accent_soft">#2935F0B0</color>
-    <color name="accent_ghost">#1435F0B0</color>
-
-    <color name="danger">#FF5C7A</color>
-    <color name="danger_dim">#D93B5C</color>
-    <color name="warn">#FFC46B</color>
-    <color name="warn_dim">#E8A03C</color>
-
-    <color name="text">#F3F7FF</color>
-    <color name="text_dim">#C7D1E6</color>
-    <color name="muted">#8B9ABA</color>
-    <color name="muted_soft">#5F6D8C</color>
-
-    <color name="chip">#1A2440</color>
-    <color name="chip_hi">#223050</color>
-    <color name="icon_bg">#0C1526</color>
-
-    <color name="ripple">#33FFFFFF</color>
     <color name="transparent">#00000000</color>
+    <color name="ripple_light">#22FFFFFF</color>
+    <color name="ripple_dark">#22101418</color>
 </resources>

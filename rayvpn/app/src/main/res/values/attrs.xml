@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- themed colours: every layout/style reads these, so the whole app can
+         switch between the dark and the light palette at runtime. -->
+    <attr name="rayBg" format="color" />
+    <attr name="rayBg2" format="color" />
+    <attr name="raySurface" format="color" />
+    <attr name="raySurface2" format="color" />
+    <attr name="rayLine" format="color" />
+    <attr name="rayLineSoft" format="color" />
+    <attr name="rayText" format="color" />
+    <attr name="rayTextDim" format="color" />
+    <attr name="rayMuted" format="color" />
+    <attr name="rayAccent" format="color" />
+    <attr name="rayAccentInk" format="color" />
+    <attr name="rayAccentSoft" format="color" />
+    <attr name="rayAccentGhost" format="color" />
+    <attr name="rayGlow" format="color" />
+    <attr name="rayDanger" format="color" />
+    <attr name="rayWarn" format="color" />
+    <attr name="rayScreen" format="reference" />
+
+    <declare-styleable name="RayText">
+        <attr name="rayWeight">
+            <enum name="regular" value="0" />
+            <enum name="medium" value="1" />
+            <enum name="semibold" value="2" />
+            <enum name="bold" value="3" />
+        </attr>
+    </declare-styleable>
+</resources>

@@ -1,320 +1,983 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_app"
-    android:layoutDirection="rtl">
+    android:background="?attr/rayScreen"
+    android:layoutDirection="locale">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="10dp">
+        android:orientation="vertical">
 
-        <!-- ── header ─────────────────────────────────────────── -->
+        <!-- ── header ──────────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="20dp">
 
-            <FrameLayout
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="@drawable/bg_icon_box">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="@string/app_name"
-                    android:src="@drawable/ic_shield"
-                    android:tint="@color/accent" />
-            </FrameLayout>
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_logo"
+                android:tint="?attr/rayAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="11dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <TextView
+                <app.rayvpn.client.RayText
+                    style="@style/Text.Brand"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:text="@string/app_name"
-                    android:textColor="@color/text"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+                    android:text="@string/app_name" />
 
-                <TextView
-                    android:id="@+id/versionText"
+                <app.rayvpn.client.RayText
+                    android:id="@+id/brandTag"
+                    style="@style/Text.Tag"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:includeFontPadding="false"
-                    android:text="در حال دریافت سرورها"
-                    android:textColor="@color/muted"
-                    android:textSize="11.5sp" />
+                    android:layout_marginTop="2dp"
+                    android:text="@string/brand_tag" />
             </LinearLayout>
 
-            <FrameLayout
-                android:id="@+id/refreshBtn"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="@drawable/bg_chip"
-                android:clickable="true"
-                android:focusable="true">
+            <LinearLayout
+                android:id="@+id/statusPill"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="11dp"
+                android:paddingEnd="11dp">
 
-                <ImageView
-                    android:id="@+id/refreshIcon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="تازه‌سازی فهرست"
-                    android:src="@drawable/ic_refresh"
-                    android:tint="@color/accent" />
-            </FrameLayout>
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bg_dot" />
+
+                <app.rayvpn.client.RayText
+                    android:id="@+id/statusText"
+                    style="@style/Text.Pill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="7dp"
+                    android:text="@string/state_ready" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- ── update banner ──────────────────────────────────── -->
+        <!-- ── update banner ───────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/updateBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_update"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/bg_tile"
             android:clickable="true"
+            android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="13dp"
-            android:paddingTop="9dp"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="9dp"
+            android:paddingBottom="10dp"
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="17dp"
-                android:layout_height="17dp"
-                android:contentDescription="آپدیت"
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:contentDescription="@string/update_available"
                 android:src="@drawable/ic_bolt"
-                android:tint="@color/accent" />
+                android:tint="?attr/rayAccent" />
 
-            <TextView
+            <app.rayvpn.client.RayText
                 android:id="@+id/updateText"
+                style="@style/Text.RowSub"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="9dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
-                android:includeFontPadding="false"
-                android:text="فهرست تازه‌ای آمده"
-                android:textColor="@color/text_dim"
-                android:textSize="12.5sp" />
+                android:text="@string/update_available" />
 
-            <TextView
+            <app.rayvpn.client.RayText
                 android:id="@+id/updateBtn"
+                style="@style/Text.RowSub"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_btn_primary"
+                android:background="@drawable/bg_segment_on"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:includeFontPadding="false"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="به‌روزرسانی"
-                android:textColor="@color/accent_ink"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- ── hero card ──────────────────────────────────────── -->
-        <LinearLayout
-            android:id="@+id/hero"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_card"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:paddingStart="14dp"
-            android:paddingTop="15dp"
-            android:paddingEnd="14dp"
-            android:paddingBottom="18dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_pill"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
                 android:paddingStart="12dp"
-                android:paddingTop="5dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="5dp">
-
-                <View
-                    android:id="@+id/statusDot"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
-                    android:background="@drawable/bg_dot" />
-
-                <TextView
-                    android:id="@+id/statusPill"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="7dp"
-                    android:includeFontPadding="false"
-                    android:text="آماده"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <FrameLayout
-                android:id="@+id/connectWrap"
-                android:layout_width="178dp"
-                android:layout_height="178dp"
-                android:layout_marginTop="6dp"
-                android:clipChildren="false"
-                android:clipToPadding="false">
-
-                <View
-                    android:id="@+id/glow"
-                    android:layout_width="172dp"
-                    android:layout_height="172dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_glow" />
-
-                <View
-                    android:id="@+id/spinRing"
-                    android:layout_width="138dp"
-                    android:layout_height="138dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_spin"
-                    android:visibility="gone" />
-
-                <View
-                    android:id="@+id/ringA"
-                    android:layout_width="108dp"
-                    android:layout_height="108dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_ring"
-                    android:visibility="gone" />
-
-                <View
-                    android:id="@+id/ringB"
-                    android:layout_width="108dp"
-                    android:layout_height="108dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_ring"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/connectBtn"
-                    android:layout_width="108dp"
-                    android:layout_height="108dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_connect"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:letterSpacing="0.02"
-                    android:text="اتصال"
-                    android:textColor="@color/accent_ink"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/serverName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:text="حالت متعادل"
-                android:textColor="@color/text"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/detailText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:lineSpacingExtra="2dp"
-                android:maxLines="2"
-                android:text="سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه"
-                android:textColor="@color/muted"
-                android:textSize="12.5sp" />
-
-            <!-- shown only while connected: measures the delay through the running tunnel -->
-            <TextView
-                android:id="@+id/pingBtn"
-                style="@style/ModeChip"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginTop="10dp"
-                android:paddingStart="18dp"
-                android:paddingEnd="18dp"
-                android:text="پینگ"
-                android:visibility="gone" />
+                android:paddingEnd="12dp"
+                android:text="@string/update_action"
+                android:textColor="?attr/rayAccent" />
         </LinearLayout>
 
-        <!-- ── connection modes (the only choice the user sees) ── -->
-        <LinearLayout
-            android:id="@+id/actions"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/modeFast"
-                style="@style/ModeChip"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:text="سریع" />
-
-            <TextView
-                android:id="@+id/modeBalance"
-                style="@style/ModeChip"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="متعادل" />
-
-            <TextView
-                android:id="@+id/modeBest"
-                style="@style/ModeChip"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="بهترین" />
-        </LinearLayout>
-
-        <!-- spacer keeps the card and modes at the top on tall screens -->
-        <View
+        <!-- ── tab pages ───────────────────────────────────────── -->
+        <FrameLayout
+            android:id="@+id/content"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_weight="1">
+
+            <!-- ══ connect ══ -->
+            <ScrollView
+                android:id="@+id/tabConnect"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="20dp">
+
+                    <FrameLayout
+                        android:id="@+id/connectWrap"
+                        android:layout_width="@dimen/connect_size"
+                        android:layout_height="@dimen/connect_size"
+                        android:layout_gravity="center_horizontal"
+                        android:clipChildren="false"
+                        android:clipToPadding="false">
+
+                        <View
+                            android:id="@+id/glow"
+                            android:layout_width="200dp"
+                            android:layout_height="200dp"
+                            android:layout_gravity="center"
+                            android:background="@drawable/glow" />
+
+                        <View
+                            android:id="@+id/ringOuter"
+                            android:layout_width="208dp"
+                            android:layout_height="208dp"
+                            android:layout_gravity="center"
+                            android:background="@drawable/ring_hairline" />
+
+                        <View
+                            android:id="@+id/spinArc"
+                            android:layout_width="188dp"
+                            android:layout_height="188dp"
+                            android:layout_gravity="center"
+                            android:background="@drawable/arc_spin"
+                            android:visibility="gone" />
+
+                        <View
+                            android:id="@+id/ringA"
+                            android:layout_width="150dp"
+                            android:layout_height="150dp"
+                            android:layout_gravity="center"
+                            android:background="@drawable/ring_pulse"
+                            android:visibility="gone" />
+
+                        <View
+                            android:id="@+id/ringB"
+                            android:layout_width="150dp"
+                            android:layout_height="150dp"
+                            android:layout_gravity="center"
+                            android:background="@drawable/ring_pulse"
+                            android:visibility="gone" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/connectCore"
+                            style="@style/Text.Button"
+                            android:layout_width="@dimen/connect_core"
+                            android:layout_height="@dimen/connect_core"
+                            android:layout_gravity="center"
+                            android:background="@drawable/core_idle"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:letterSpacing="0.06"
+                            android:text="@string/action_connect"
+                            android:textColor="?attr/rayAccent"
+                            android:textSize="14.5sp" />
+                    </FrameLayout>
+
+                    <app.rayvpn.client.RayText
+                        android:id="@+id/heroTitle"
+                        style="@style/Text.Hero"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="@string/mode_balance_title" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="7dp"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/heroSub"
+                            style="@style/Text.HeroSub"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/mode_balance_hint" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/pingBtn"
+                            style="@style/Text.Pill"
+                            android:layout_width="wrap_content"
+                            android:layout_height="24dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_pill"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:text="@string/ping_action"
+                            android:textColor="?attr/rayAccent"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- live numbers -->
+                    <LinearLayout
+                        android:id="@+id/liveRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_download" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/valDown"
+                                style="@style/Text.Value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="5dp"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="30dp"
+                            android:background="@drawable/divider" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_upload" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/valUp"
+                                style="@style/Text.Value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="5dp"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="30dp"
+                            android:background="@drawable/divider" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_duration" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/valTime"
+                                style="@style/Text.Value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="5dp"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- connection mode -->
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="26dp"
+                        android:text="@string/mode_label" />
+
+                    <LinearLayout
+                        android:id="@+id/modeBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_segment"
+                        android:orientation="horizontal"
+                        android:padding="4dp">
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/modeFast"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment"
+                            android:text="@string/mode_fast" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/modeBalance"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment_on"
+                            android:text="@string/mode_balance"
+                            android:textColor="?attr/rayAccent" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/modeBest"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment"
+                            android:text="@string/mode_best" />
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        android:id="@+id/footerHint"
+                        style="@style/Text.Tag"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center"
+                        android:text="@string/connect_hint" />
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- ══ stats ══ -->
+            <ScrollView
+                android:id="@+id/tabStats"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <app.rayvpn.client.RayText
+                            style="@style/Text.Section"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/stats_speed" />
+
+                        <app.rayvpn.client.RayText
+                            style="@style/Text.Tag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/stats_chart_hint" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_card"
+                        android:orientation="vertical"
+                        android:paddingStart="6dp"
+                        android:paddingTop="14dp"
+                        android:paddingEnd="6dp"
+                        android:paddingBottom="14dp">
+
+                        <app.rayvpn.client.SpeedGraph
+                            android:id="@+id/graph"
+                            android:layout_width="match_parent"
+                            android:layout_height="132dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:orientation="horizontal"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp">
+
+                            <View
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:layout_gravity="center_vertical"
+                                android:background="@drawable/bg_dot"
+                                android:backgroundTint="?attr/rayAccent" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/speedDown"
+                                style="@style/Text.RowSub"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="7dp"
+                                android:layout_weight="1"
+                                android:text="@string/dash" />
+
+                            <View
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:layout_gravity="center_vertical"
+                                android:background="@drawable/bg_dot"
+                                android:backgroundTint="?attr/rayTextDim" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/speedUp"
+                                style="@style/Text.RowSub"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="7dp"
+                                android:layout_weight="1"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/stats_session" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_card"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/sessDown"
+                                style="@style/Text.Value.Big"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/stat_download" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/sessUp"
+                                style="@style/Text.Value.Big"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/stat_upload" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/sessTime"
+                                style="@style/Text.Value.Big"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="@string/stat_duration" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/stats_total" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_card"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingTop="4dp"
+                        android:paddingEnd="16dp"
+                        android:paddingBottom="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Row"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/stats_total_data" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/totalData"
+                                style="@style/Text.RowSub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@drawable/divider" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Row"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/stats_sessions" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/totalSessions"
+                                style="@style/Text.RowSub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@drawable/divider" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Row"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/stats_best_ping" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/totalPing"
+                                style="@style/Text.RowSub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dash" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        android:id="@+id/statsReset"
+                        style="@style/Text.ButtonGhost"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_ghost"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="@string/stats_reset" />
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- ══ settings ══ -->
+            <ScrollView
+                android:id="@+id/tabSettings"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="20dp">
+
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_appearance" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_segment"
+                        android:orientation="horizontal"
+                        android:padding="4dp">
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/themeDark"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment_on"
+                            android:text="@string/settings_theme_dark"
+                            android:textColor="?attr/rayAccent" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/themeLight"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment"
+                            android:text="@string/settings_theme_light" />
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/settings_language" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_segment"
+                        android:orientation="horizontal"
+                        android:padding="4dp">
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/langFa"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment_on"
+                            android:text="@string/lang_fa"
+                            android:textColor="?attr/rayAccent" />
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/langEn"
+                            style="@style/Segment"
+                            android:layout_width="0dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_segment"
+                            android:text="@string/lang_en" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/bg_card"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.Row"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_notifications" />
+
+                            <app.rayvpn.client.RayText
+                                style="@style/Text.RowSub"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_notifications_hint" />
+                        </LinearLayout>
+
+                        <app.rayvpn.client.ToggleView
+                            android:id="@+id/notifToggle"
+                            android:layout_width="44dp"
+                            android:layout_height="26dp"
+                            android:layout_marginStart="12dp" />
+                    </LinearLayout>
+
+                    <app.rayvpn.client.RayText
+                        style="@style/Text.Section"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/settings_servers" />
+
+                    <LinearLayout
+                        android:id="@+id/refreshRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_card"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/serversCount"
+                                style="@style/Text.Row"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/servers_empty" />
+
+                            <app.rayvpn.client.RayText
+                                android:id="@+id/refreshText"
+                                style="@style/Text.RowSub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/refresh_action" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:id="@+id/refreshIcon"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="12dp"
+                            android:contentDescription="@string/refresh_action"
+                            android:src="@drawable/ic_refresh"
+                            android:tint="?attr/rayAccent" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/bg_card"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <app.rayvpn.client.RayText
+                            android:id="@+id/aboutVersion"
+                            style="@style/Text.Row"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_about" />
+
+                        <app.rayvpn.client.RayText
+                            style="@style/Text.RowSub"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="@string/about_note" />
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+
+        <!-- ── bottom navigation ───────────────────────────────── -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@drawable/divider" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/nav_height"
+            android:orientation="horizontal"
+            android:paddingStart="34dp"
+            android:paddingEnd="34dp">
+
+            <LinearLayout
+                android:id="@+id/navConnect"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/navConnectIcon"
+                    android:layout_width="21dp"
+                    android:layout_height="21dp"
+                    android:contentDescription="@string/tab_connect"
+                    android:src="@drawable/ic_power"
+                    android:tint="?attr/rayAccent" />
+
+                <app.rayvpn.client.RayText
+                    android:id="@+id/navConnectText"
+                    style="@style/Text.Tab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/tab_connect"
+                    android:textColor="?attr/rayAccent" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navStats"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/navStatsIcon"
+                    android:layout_width="21dp"
+                    android:layout_height="21dp"
+                    android:contentDescription="@string/tab_stats"
+                    android:src="@drawable/ic_chart"
+                    android:tint="?attr/rayMuted" />
+
+                <app.rayvpn.client.RayText
+                    android:id="@+id/navStatsText"
+                    style="@style/Text.Tab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/tab_stats" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navSettings"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/navSettingsIcon"
+                    android:layout_width="21dp"
+                    android:layout_height="21dp"
+                    android:contentDescription="@string/tab_settings"
+                    android:src="@drawable/ic_tune"
+                    android:tint="?attr/rayMuted" />
+
+                <app.rayvpn.client.RayText
+                    android:id="@+id/navSettingsText"
+                    style="@style/Text.Tab"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/tab_settings" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -40,6 +40,13 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     public static volatile String activeId = "";
     public static volatile String traffic = "";
 
+    /** Live counters of the running session (filled by the stats poller). */
+    public static volatile long sessionStartedAt;
+    public static volatile long bytesDown;
+    public static volatile long bytesUp;
+    public static volatile long speedDown;
+    public static volatile long speedUp;
+
     /** Exit IP and country of the running tunnel (filled after connecting). */
     public static volatile String exitIp = "";
     public static volatile String exitCountry = "";
@@ -82,7 +89,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startForeground(NOTIF, notification("ری‌وی‌پی‌ان", "در حال آماده‌سازی تونل", false));
+        startForeground(NOTIF, notification(getString(R.string.svc_title), getString(R.string.svc_preparing), false));
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
             workerHandler.post(new Runnable() {
                 @Override public void run() { stopTunnel("قطع شد"); }
@@ -102,7 +109,11 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         exitCountry = "";
         exitCode = "";
         exitFailed = false;
-        setState(STATE_CONNECTING, "در حال انتخاب سرور…", null);
+        stopTraffic();
+        sessionStartedAt = 0L;
+        bytesDown = 0L;
+        bytesUp = 0L;
+        setState(STATE_CONNECTING, getString(R.string.svc_selecting), null);
         new Thread(new Runnable() {
             @Override public void run() { selectAndConnect(mode, mine); }
         }, "rayvpn-select").start();
@@ -116,8 +127,14 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
             List<Profile> profiles = new ArrayList<>(store.profiles);
             chosen = ServerSelector.select(mode, profiles,
                     new ServerSelector.Progress() {
-                        @Override public void update(String text) {
-                            if (session.get() == mine) setState(STATE_CONNECTING, text, null);
+                        @Override public void update(int step, int index, int total) {
+                            if (session.get() != mine) return;
+                            int res = step == ServerSelector.Progress.TEST ? R.string.svc_test_server
+                                    : step == ServerSelector.Progress.PING ? R.string.svc_test_ping
+                                    : R.string.svc_test_speed;
+                            boolean fa = LocaleHelper.isPersian(VpnTunnelService.this);
+                            setState(STATE_CONNECTING,
+                                    getString(res, Ui.num(index, fa), Ui.num(total, fa)), null);
                         }
                     },
                     new ServerSelector.Cancel() {
@@ -126,7 +143,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                         }
                     });
         } catch (Throwable e) {
-            String msg = e.getMessage() == null ? "انتخاب سرور انجام نشد" : e.getMessage();
+            String msg = e.getMessage() == null ? getString(R.string.hero_error) : e.getMessage();
             failSession(mine, msg);
             return;
         }
@@ -154,7 +171,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
 
     private void startTunnel(int mine, Profile profile) {
         if (session.get() != mine) return;
-        setState(STATE_CONNECTING, "در حال ساخت تونل", profile.id);
+        setState(STATE_CONNECTING, getString(R.string.svc_building), profile.id);
         try {
             if (RayApp.coreError != null && !RayApp.coreError.isEmpty()) {
                 throw new IllegalStateException("هسته بارگذاری نشد: " + RayApp.coreError);
@@ -178,8 +195,9 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                 if (core.getIsRunning()) core.stopLoop();
                 core.startLoop(config, fd);
             }
-            setState(STATE_CONNECTED, "در حال دریافت IP…", profile.id);
-            updateNotification("متصل", "در حال دریافت IP…", true);
+            startTraffic();
+            setState(STATE_CONNECTED, getString(R.string.svc_ip), profile.id);
+            updateNotification(getString(R.string.svc_connected), getString(R.string.svc_ip), true);
             startExitLookup(mine);
         } catch (Exception e) {
             String msg = e.getMessage() == null ? e.toString() : e.getMessage();
@@ -215,7 +233,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                         exitCode = info.code;
                         exitFailed = false;
                         setState(STATE_CONNECTED, "", null);
-                        updateNotification("متصل", exitLine(), true);
+                        updateNotification(getString(R.string.svc_connected), exitLine(), true);
                         return;
                     }
                     try {
@@ -227,7 +245,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                 if (session.get() != mine) return;
                 exitFailed = true;
                 setState(STATE_CONNECTED, "", null);
-                updateNotification("متصل", "IP نامشخص", true);
+                updateNotification(getString(R.string.svc_connected), getString(R.string.ip_unknown), true);
             }
         }, "rayvpn-exit").start();
     }
@@ -273,6 +291,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     }
 
     private void stopTunnel(String message) {
+        if (message == null) message = getString(R.string.svc_stopped);
         session.incrementAndGet();
         synchronized (coreLock) {
             try {
@@ -287,6 +306,8 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         exitCountry = "";
         exitCode = "";
         exitFailed = false;
+        stopTraffic();
+        sessionStartedAt = 0L;
         setState(STATE_IDLE, message, "");
         traffic = "";
         stopForeground(true);
@@ -303,7 +324,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     @Override
     public void onRevoke() {
         workerHandler.post(new Runnable() {
-            @Override public void run() { stopTunnel("VPN توسط سیستم قطع شد"); }
+            @Override public void run() { stopTunnel(null); }
         });
         super.onRevoke();
     }
@@ -360,7 +381,7 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
     }
 
     public static void requestStop(android.content.Context context) {
-        requestStop(context, "قطع شد");
+        requestStop(context, null);
     }
 
     public static void requestStop(android.content.Context context, final String message) {
@@ -397,10 +418,90 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
         }
     }
 
+    // ── live traffic (outbound counters of the running core) ────────────
+
+    private volatile boolean trafficOn;
+    private long trafficLastAt;
+
+    private final Runnable trafficTick = new Runnable() {
+        @Override public void run() {
+            if (!trafficOn) return;
+            long now = System.currentTimeMillis();
+            long span = trafficLastAt <= 0 ? 1000L : now - trafficLastAt;
+            trafficLastAt = now;
+            if (span < 200L) span = 200L;
+            long[] sample = sampleTraffic();
+            if (sample != null) {
+                // every read resets the core counters, so a sample is the traffic
+                // of the last `span` milliseconds: accumulate it and normalise it
+                // to bytes per second.
+                bytesUp += sample[0];
+                bytesDown += sample[1];
+                speedUp = sample[0] * 1000L / span;
+                speedDown = sample[1] * 1000L / span;
+            }
+            workerHandler.postDelayed(this, Math.max(200L, 1000L - (System.currentTimeMillis() - now)));
+        }
+    };
+
+    private void startTraffic() {
+        bytesDown = 0L;
+        bytesUp = 0L;
+        speedDown = 0L;
+        speedUp = 0L;
+        sessionStartedAt = System.currentTimeMillis();
+        trafficOn = true;
+        trafficLastAt = 0L;
+        if (workerHandler == null) return;
+        workerHandler.removeCallbacks(trafficTick);
+        workerHandler.postDelayed(trafficTick, 1000);
+    }
+
+    private void stopTraffic() {
+        trafficOn = false;
+        trafficLastAt = 0L;
+        if (workerHandler != null) workerHandler.removeCallbacks(trafficTick);
+        speedDown = 0L;
+        speedUp = 0L;
+    }
+
+    /**
+     * Reads the core counters, which are reset by every read, and returns
+     * {up, down}. The call is guarded by the same lock as every other core
+     * call so it can never race a start or a stop.
+     */
+    private long[] sampleTraffic() {
+        String raw;
+        synchronized (coreLock) {
+            try {
+                if (core == null || !core.getIsRunning()) return null;
+                raw = core.queryAllOutboundTrafficStats();
+            } catch (Throwable e) {
+                return null;
+            }
+        }
+        if (raw == null || raw.isEmpty()) return new long[]{0L, 0L};
+        long up = 0L;
+        long down = 0L;
+        for (String part : raw.split(";")) {
+            String[] bits = part.split(",");
+            if (bits.length != 3) continue;
+            long value;
+            try {
+                value = Long.parseLong(bits[2].trim());
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            if ("uplink".equals(bits[1])) up += value;
+            else if ("downlink".equals(bits[1])) down += value;
+        }
+        return new long[]{up, down};
+    }
+
     private void createChannel() {
         if (Build.VERSION.SDK_INT < 26) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL, "وضعیت اتصال", NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("وضعیت تونل ری‌وی‌پی‌ان");
+        NotificationChannel channel = new NotificationChannel(CHANNEL, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_LOW);
+        channel.setDescription(getString(R.string.svc_title));
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) nm.createNotificationChannel(channel);
     }
@@ -422,10 +523,10 @@ public class VpnTunnelService extends VpnService implements CoreCallbackHandler 
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
-                .setColor(0xFF35F0B0)
+                .setColor(0xFF55E6BB)
                 .setColorized(false)
                 .setContentIntent(content)
-                .addAction(new Notification.Action.Builder(0, "قطع", stopPi).build());
+                .addAction(new Notification.Action.Builder(0, getString(R.string.action_disconnect), stopPi).build());
         if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
         return b.build();
     }

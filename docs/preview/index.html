@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ری‌وی‌پی‌ان — پیش‌نمایش طراحی ۱.۸.۰</title>
+<style>
+@font-face { font-family: Vazirmatn; src: url('../../rayvpn/app/src/main/assets/fonts/vazirmatn_regular.ttf'); font-weight: 400; }
+@font-face { font-family: Vazirmatn; src: url('../../rayvpn/app/src/main/assets/fonts/vazirmatn_medium.ttf'); font-weight: 500; }
+@font-face { font-family: Vazirmatn; src: url('../../rayvpn/app/src/main/assets/fonts/vazirmatn_semibold.ttf'); font-weight: 600; }
+@font-face { font-family: Vazirmatn; src: url('../../rayvpn/app/src/main/assets/fonts/vazirmatn_bold.ttf'); font-weight: 700; }
+
+:root {
+  --bg1: #0C0E13; --bg2: #08090C;
+  --surface: #101217; --surface2: #16191F;
+  --line: #23262E; --lineSoft: #181B21;
+  --text: #F4F6F9; --textDim: #B4BCC8; --muted: #6F7783;
+  --accent: #55E6BB; --accentInk: #04211A; --accentSoft: rgba(85,230,187,.13);
+  --glow: rgba(85,230,187,.22);
+  --warn: #F5C77E; --danger: #FF6B7D;
+  --navBg: rgba(8,9,12,.92);
+}
+body.light {
+  --bg1: #FFFFFF; --bg2: #F2F4F7;
+  --surface: #FFFFFF; --surface2: #F1F4F7;
+  --line: #E1E5EA; --lineSoft: #EDF0F4;
+  --text: #0E1116; --textDim: #414954; --muted: #7E8794;
+  --accent: #0E9C75; --accentInk: #FFFFFF; --accentSoft: rgba(14,156,117,.12);
+  --glow: rgba(14,156,117,.14);
+  --warn: #A9750F; --danger: #D53B50;
+  --navBg: rgba(246,247,249,.94);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: Vazirmatn, system-ui, sans-serif;
+  background: #07080A;
+  color: #F4F6F9;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 18px; padding: 26px 14px 40px;
+}
+.title { text-align: center; }
+.title h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+.title p { margin: 0; font-size: 12px; color: #7C8592; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.chip {
+  font: inherit; font-size: 12px; font-weight: 500;
+  padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  background: #14161B; color: #B4BCC8; border: 1px solid #23262E;
+  transition: all .18s ease;
+}
+.chip:hover { border-color: #3A3F49; }
+.chip.on { background: rgba(85,230,187,.14); color: #55E6BB; border-color: rgba(85,230,187,.35); }
+
+/* ── phone ─────────────────────────────────────────────── */
+.phone {
+  position: relative;
+  width: 366px; height: 742px;
+  border-radius: 40px;
+  padding: 9px;
+  background: linear-gradient(160deg, #23262E, #0B0C0F 55%);
+  box-shadow: 0 30px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.04);
+}
+.screen {
+  position: relative; width: 100%; height: 100%;
+  border-radius: 32px; overflow: hidden;
+  background:
+    radial-gradient(120% 180px at 50% -30px, var(--glow), transparent 70%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: var(--text);
+  display: flex; flex-direction: column;
+  font-size: 14px;
+}
+.statusbar {
+  height: 26px; flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; font-size: 10px; color: var(--muted); letter-spacing: .02em;
+}
+.statusbar .dots { display: flex; gap: 3px; align-items: center; }
+.statusbar .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); display: block; }
+
+.page { flex: 1; overflow: hidden auto; padding: 0 20px 16px; }
+.page::-webkit-scrollbar { width: 0; }
+
+/* header */
+.header { display: flex; align-items: center; gap: 10px; padding: 6px 0 0; }
+.brand { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.brand b { font-size: 16.5px; font-weight: 600; letter-spacing: .01em; }
+.brand span { font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: .06em; }
+.mark { width: 26px; height: 26px; color: var(--accent); flex: none; }
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 28px; padding: 0 11px; border-radius: 999px;
+  background: var(--surface2); border: 1px solid var(--lineSoft);
+  font-size: 11.5px; font-weight: 500; color: var(--textDim);
+}
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: block; }
+.pill.ok { color: var(--accent); } .pill.ok i { background: var(--accent); }
+
+/* connect ring */
+.connect { position: relative; height: 236px; margin: 6px auto 0; width: 236px; }
+.connect .glow {
+  position: absolute; inset: 18px; border-radius: 50%;
+  background: radial-gradient(circle, var(--glow), transparent 68%);
+}
+.connect .outer { position: absolute; inset: 14px; border-radius: 50%; border: 1px solid var(--line); }
+.connect .mid { position: absolute; inset: 24px; border-radius: 50%; border: 1px solid rgba(85,230,187,.35); }
+.connect .pulse {
+  position: absolute; inset: 43px; border-radius: 50%;
+  border: 1px solid rgba(85,230,187,.4);
+  animation: pulse 2.15s linear infinite;
+}
+.connect .pulse.two { animation-delay: .62s; }
+@keyframes pulse {
+  0% { transform: scale(.86); opacity: .85; }
+  100% { transform: scale(1.24); opacity: 0; }
+}
+.core {
+  position: absolute; inset: 54px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-size: 14.5px; font-weight: 600; letter-spacing: .06em;
+  box-shadow: 0 0 0 6px rgba(85,230,187,.05);
+}
+.core.off { border-color: var(--line); color: var(--textDim); }
+
+.hero { text-align: center; margin-top: 6px; }
+.hero b { display: block; font-size: 21px; font-weight: 600; }
+.hero .sub {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 7px; font-size: 12.5px; color: var(--muted);
+}
+.pingchip {
+  height: 24px; padding: 0 10px; border-radius: 999px;
+  background: var(--surface2); border: 1px solid var(--lineSoft);
+  color: var(--accent); font-size: 11.5px; font-weight: 500;
+  display: inline-flex; align-items: center;
+}
+
+/* live numbers */
+.live { display: flex; align-items: stretch; margin-top: 22px; }
+.live > div { flex: 1; text-align: center; }
+.live .sep { flex: none; width: 1px; background: var(--lineSoft); height: 30px; align-self: center; }
+.live small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); letter-spacing: .08em; }
+.live b { display: block; margin-top: 5px; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* sections + segments */
+.section {
+  display: block; margin-top: 26px; font-size: 10.5px; font-weight: 500;
+  color: var(--muted); letter-spacing: .12em;
+}
+.segment {
+  display: flex; gap: 4px; padding: 4px; margin-top: 9px;
+  background: var(--surface2); border: 1px solid var(--lineSoft); border-radius: 15px;
+}
+.segment button {
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--textDim);
+  flex: 1; height: 40px; border: 0; border-radius: 11px; background: transparent;
+  cursor: pointer; transition: all .2s ease;
+}
+.segment button.on { background: var(--accentSoft); color: var(--accent); }
+
+.hint { margin-top: 12px; text-align: center; font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: .06em; }
+
+/* cards */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; }
+.card.pad { padding: 16px; }
+.card + .card { margin-top: 12px; }
+.row { display: flex; align-items: center; gap: 12px; height: 46px; }
+.row + .row { border-top: 1px solid var(--lineSoft); }
+.row .k { flex: 1; font-size: 14px; font-weight: 500; }
+.row .v { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.graph { height: 132px; padding: 6px 4px 0; }
+.graph svg { width: 100%; height: 100%; display: block; }
+.legend { display: flex; gap: 14px; padding: 12px 12px 0; font-size: 11.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+
+.tiles { display: flex; }
+.tiles > div { flex: 1; text-align: center; }
+.tiles b { font-size: 20px; font-weight: 600; display: block; font-variant-numeric: tabular-nums; }
+.tiles small { display: block; margin-top: 6px; font-size: 10px; font-weight: 500; color: var(--muted); letter-spacing: .08em; }
+
+.ghost {
+  display: flex; align-items: center; justify-content: center;
+  height: 46px; margin-top: 16px; border-radius: 14px;
+  border: 1px solid var(--line); color: var(--textDim);
+  font-size: 13.5px; font-weight: 500; cursor: pointer; background: transparent;
+  font-family: inherit;
+}
+.switch {
+  width: 44px; height: 26px; border-radius: 999px; background: var(--accent);
+  position: relative; flex: none;
+}
+body.light .switch { background: var(--accent); }
+.switch::after {
+  content: ''; position: absolute; top: 4px; right: 4px;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--text);
+}
+.mutedline { font-size: 11.5px; color: var(--muted); }
+.iconbtn { width: 20px; height: 20px; color: var(--accent); flex: none; }
+
+/* nav */
+.nav {
+  flex: none; display: flex; border-top: 1px solid var(--lineSoft);
+  background: var(--navBg); height: 62px; padding: 0 34px;
+  backdrop-filter: blur(14px);
+}
+.nav button {
+  flex: 1; background: none; border: 0; font-family: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  color: var(--muted); font-size: 10px; font-weight: 500;
+}
+.nav button.on { color: var(--text); }
+.nav button.on svg { color: var(--accent); }
+.nav svg { width: 21px; height: 21px; color: var(--muted); }
+.nav button.on { font-weight: 600; }
+
+.note {
+  max-width: 640px; text-align: center; font-size: 11.5px; line-height: 1.9;
+  color: #6C7480;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="title">
+  <h1>ری‌وی‌پی‌ان — نسخهٔ ۱.۸.۰</h1>
+  <p>پیش‌نمایش طراحی (نه اسکرین‌شات). همان رنگ‌ها، فونت و اندازه‌های داخل اپ.</p>
+</div>
+
+<div class="toolbar">
+  <button class="chip on" id="tabConnectBtn">اتصال</button>
+  <button class="chip" id="tabStatsBtn">آمار</button>
+  <button class="chip" id="tabSettingsBtn">تنظیمات</button>
+  <button class="chip" id="themeBtn">تم روشن</button>
+  <button class="chip" id="stateBtn">حالت: متصل</button>
+</div>
+
+<div class="phone">
+  <div class="screen">
+    <div class="statusbar"><span>۹:۴۱</span><span class="dots"><i></i><i></i><i></i></span></div>
+
+    <!-- ══ connect ══ -->
+    <div class="page" id="pageConnect">
+      <div class="header">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9.4"/><path d="M13.4 6.6 9.4 13.3h2.5l-1.3 4.9 4.2-6.9h-2.6z" fill="currentColor" stroke="none"/>
+        </svg>
+        <div class="brand"><b>ری‌وی‌پی‌ان</b><span>اتصال خصوصی</span></div>
+        <div class="pill ok" id="headerPill"><i></i><span>متصل</span></div>
+      </div>
+
+      <div class="connect">
+        <div class="glow"></div>
+        <div class="outer"></div>
+        <div class="mid"></div>
+        <div class="pulse"></div>
+        <div class="pulse two"></div>
+        <div class="core" id="coreBtn">قطع</div>
+      </div>
+
+      <div class="hero">
+        <b id="heroTitle">هلند</b>
+        <div class="sub"><span id="heroSub">185.42.17.93</span><span class="pingchip">۴۱ ms</span></div>
+      </div>
+
+      <div class="live">
+        <div><small>دانلود</small><b id="liveDown">۱۲٫۴ MB</b></div>
+        <div class="sep"></div>
+        <div><small>آپلود</small><b id="liveUp">۲٫۱ MB</b></div>
+        <div class="sep"></div>
+        <div><small>مدت</small><b id="liveTime">۰۴:۱۲</b></div>
+      </div>
+
+      <span class="section">حالت اتصال</span>
+      <div class="segment" id="modeSegment">
+        <button>سریع</button>
+        <button class="on">متعادل</button>
+        <button>بهترین</button>
+      </div>
+      <div class="hint">برای شروع اتصال، دکمه را بزنید</div>
+    </div>
+
+    <!-- ══ stats ══ -->
+    <div class="page hidden" id="pageStats">
+      <div class="header">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9.4"/><path d="M13.4 6.6 9.4 13.3h2.5l-1.3 4.9 4.2-6.9h-2.6z" fill="currentColor" stroke="none"/></svg>
+        <div class="brand"><b>ری‌وی‌پی‌ان</b><span>اتصال خصوصی</span></div>
+        <div class="pill ok"><i></i><span>متصل</span></div>
+      </div>
+
+      <div style="display:flex;align-items:center;margin-top:18px">
+        <span class="section" style="margin:0;flex:1">سرعت زنده</span>
+        <span class="mutedline">۶۰ ثانیهٔ گذشته</span>
+      </div>
+
+      <div class="card" style="margin-top:9px">
+        <div class="graph">
+          <svg viewBox="0 0 300 120" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#55E6BB" stop-opacity=".28"/>
+                <stop offset="100%" stop-color="#55E6BB" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g stroke="#23262E" stroke-width=".7" opacity=".75">
+              <line x1="6" y1="30" x2="294" y2="30"/><line x1="6" y1="60" x2="294" y2="60"/><line x1="6" y1="90" x2="294" y2="90"/>
+            </g>
+            <path d="M6 96 22 88 38 92 54 70 70 78 86 52 102 63 118 40 134 55 150 34 166 48 182 30 198 44 214 24 230 36 246 20 262 30 278 18 294 26 294 114 6 114Z" fill="url(#g)"/>
+            <path d="M6 96 22 88 38 92 54 70 70 78 86 52 102 63 118 40 134 55 150 34 166 48 182 30 198 44 214 24 230 36 246 20 262 30 278 18 294 26" fill="none" stroke="#55E6BB" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M6 108 22 106 38 107 54 100 70 103 86 98 102 101 118 96 134 99 150 94 166 97 182 92 198 95 214 90 230 93 246 89 262 91 278 87 294 90" fill="none" stroke="#B4BCC8" stroke-width="1.1" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="legend">
+          <span><i style="background:#55E6BB"></i>دانلود · ۲٫۴ MB/s</span>
+          <span><i style="background:#B4BCC8"></i>آپلود · ۳۱۲ KB/s</span>
+        </div>
+      </div>
+
+      <span class="section">این نشست</span>
+      <div class="card pad tiles" style="margin-top:9px">
+        <div><b>۱۲٫۴ MB</b><small>دانلود</small></div>
+        <div><b>۲٫۱ MB</b><small>آپلود</small></div>
+        <div><b>۰۴:۱۲</b><small>مدت</small></div>
+      </div>
+
+      <span class="section">مجموع</span>
+      <div class="card pad" style="margin-top:9px;padding-top:4px;padding-bottom:4px">
+        <div class="row"><span class="k">کل مصرف</span><span class="v">۱٫۸۴ GB</span></div>
+        <div class="row"><span class="k">تعداد اتصال</span><span class="v">۲۷</span></div>
+        <div class="row"><span class="k">کمترین پینگ</span><span class="v">۳۸ ms</span></div>
+      </div>
+
+      <button class="ghost">بازنشانی آمار</button>
+    </div>
+
+    <!-- ══ settings ══ -->
+    <div class="page hidden" id="pageSettings">
+      <div class="header">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9.4"/><path d="M13.4 6.6 9.4 13.3h2.5l-1.3 4.9 4.2-6.9h-2.6z" fill="currentColor" stroke="none"/></svg>
+        <div class="brand"><b>ری‌وی‌پی‌ان</b><span>اتصال خصوصی</span></div>
+        <div class="pill ok"><i></i><span>متصل</span></div>
+      </div>
+
+      <span class="section" style="margin-top:18px">ظاهر</span>
+      <div class="segment">
+        <button class="on" id="segDark">تیره</button>
+        <button id="segLight">روشن</button>
+      </div>
+
+      <span class="section">زبان</span>
+      <div class="segment">
+        <button class="on">فارسی</button>
+        <button>English</button>
+      </div>
+
+      <div class="card pad" style="margin-top:20px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:500">اعلان‌ها</div>
+          <div class="mutedline" style="margin-top:3px">اطلاع از آپدیت فهرست سرورها</div>
+        </div>
+        <div class="switch"></div>
+      </div>
+
+      <span class="section">سرورها</span>
+      <div class="card pad" style="margin-top:9px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:500">۹۴ سرور آماده</div>
+          <div class="mutedline" style="margin-top:3px">به‌روزرسانی فهرست</div>
+        </div>
+        <svg class="iconbtn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19.6 12A7.6 7.6 0 1 1 17.4 6.6"/><path d="M17.9 3.4v4h-4"/>
+        </svg>
+      </div>
+
+      <div class="card pad" style="margin-top:20px">
+        <div style="font-size:14px;font-weight:500">نسخهٔ ۱.۸.۰</div>
+        <div class="mutedline" style="margin-top:3px">اتصال امن و سبک بر پایهٔ Xray</div>
+      </div>
+    </div>
+
+    <!-- nav -->
+    <div class="nav">
+      <button class="on" id="navConnect">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3.4v7.8"/><path d="M17.8 6.9a8.1 8.1 0 1 1-11.6 0"/></svg>
+        <span>اتصال</span>
+      </button>
+      <button id="navStats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.5 19.2v-5.8M12 19.2V6.4M17.5 19.2v-9"/></svg>
+        <span>آمار</span>
+      </button>
+      <button id="navSettings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 8.4h16M4 15.6h16"/><circle cx="15" cy="8.4" r="2.1"/><circle cx="9" cy="15.6" r="2.1"/></svg>
+        <span>تنظیمات</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<p class="note">
+  این صفحه فقط برای دیدن ظاهر ساخته شده است. اپ واقعی همین رنگ‌ها، فونت وزیرمتن و اندازه‌ها را
+  داخل APK اجرا می‌کند؛ انیمیشن‌ها (پالس هنگام اتصال، حلقهٔ چرخان، کراس‌فید متن‌ها و نمودار زندهٔ سرعت) در این پیش‌نمایش ساده‌سازی شده‌اند.
+</p>
+
+<script>
+const pages = { connect: 'pageConnect', stats: 'pageStats', settings: 'pageSettings' };
+const navs = { connect: 'navConnect', stats: 'navStats', settings: 'navSettings' };
+const chips = { connect: 'tabConnectBtn', stats: 'tabStatsBtn', settings: 'tabSettingsBtn' };
+
+function show(which) {
+  Object.keys(pages).forEach(k => {
+    document.getElementById(pages[k]).classList.toggle('hidden', k !== which);
+    document.getElementById(navs[k]).classList.toggle('on', k === which);
+    document.getElementById(chips[k]).classList.toggle('on', k === which);
+  });
+}
+Object.keys(pages).forEach(k => {
+  document.getElementById(navs[k]).onclick = () => show(k);
+  document.getElementById(chips[k]).onclick = () => show(k);
+});
+
+document.getElementById('themeBtn').onclick = (e) => {
+  document.body.classList.toggle('light');
+  const light = document.body.classList.contains('light');
+  e.target.textContent = light ? 'تم تیره' : 'تم روشن';
+  document.getElementById('segDark').classList.toggle('on', !light);
+  document.getElementById('segLight').classList.toggle('on', light);
+};
+document.getElementById('segDark').onclick = () => { if (document.body.classList.contains('light')) document.getElementById('themeBtn').click(); };
+document.getElementById('segLight').onclick = () => { if (!document.body.classList.contains('light')) document.getElementById('themeBtn').click(); };
+
+// connect / idle states
+let connected = true;
+document.getElementById('stateBtn').onclick = (e) => {
+  connected = !connected;
+  const core = document.getElementById('coreBtn');
+  const pill = document.getElementById('headerPill');
+  const title = document.getElementById('heroTitle');
+  const sub = document.getElementById('heroSub');
+  if (connected) {
+    core.textContent = 'قطع'; core.classList.remove('off');
+    pill.className = 'pill ok'; pill.innerHTML = '<i></i><span>متصل</span>';
+    title.textContent = 'هلند'; sub.textContent = '185.42.17.93';
+    e.target.textContent = 'حالت: متصل';
+  } else {
+    core.textContent = 'اتصال'; core.classList.add('off');
+    pill.className = 'pill'; pill.innerHTML = '<i></i><span>آماده</span>';
+    title.textContent = 'اتصال متعادل'; sub.textContent = 'سروری با میانگین پینگ زیر ۲۰۰ میلی‌ثانیه';
+    e.target.textContent = 'حالت: آماده';
+  }
+};
+
+// mode segment
+document.querySelectorAll('#modeSegment button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#modeSegment button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+  };
+});
+</script>
+</body>
+</html>

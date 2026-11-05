@@ -45,8 +45,13 @@ public final class ServerSelector {
         }
     }
 
+    /** Progress of the selection, reported as numbers so the caller can localise it. */
     public interface Progress {
-        void update(String text);
+        int TEST = 0;
+        int PING = 1;
+        int SPEED = 2;
+
+        void update(int step, int index, int total);
     }
 
     public interface Cancel {
@@ -99,7 +104,7 @@ public final class ServerSelector {
         for (int i = 0; i < profiles.size(); i++) {
             if (cancel.isCancelled()) return null;
             Profile p = profiles.get(i);
-            progress.update("تست سرور " + (i + 1) + " از " + profiles.size());
+            progress.update(Progress.TEST, i + 1, profiles.size());
             if (!tcpOk(p)) continue;
             if (delayOnce(p) >= 0) return p;
         }
@@ -112,7 +117,7 @@ public final class ServerSelector {
         for (int i = 0; i < profiles.size(); i++) {
             if (cancel.isCancelled()) return null;
             Profile p = profiles.get(i);
-            progress.update("تست سرور " + (i + 1) + " از " + profiles.size());
+            progress.update(Progress.TEST, i + 1, profiles.size());
             if (!tcpOk(p)) continue;
             long sum = 0;
             int answered = 0;
@@ -141,7 +146,7 @@ public final class ServerSelector {
         for (int i = 0; i < profiles.size(); i++) {
             if (cancel.isCancelled()) return null;
             Profile p = profiles.get(i);
-            progress.update("تست پینگ " + (i + 1) + " از " + profiles.size());
+            progress.update(Progress.PING, i + 1, profiles.size());
             if (!tcpOk(p)) continue;
             long ms = delayOnce(p);
             if (ms >= 0) pinged.add(new Scored(p, ms));
@@ -160,7 +165,7 @@ public final class ServerSelector {
         for (int i = 0; i < count; i++) {
             if (cancel.isCancelled()) return null;
             Profile p = pinged.get(i).profile;
-            progress.update("تست سرعت " + (i + 1) + " از " + count);
+            progress.update(Progress.SPEED, i + 1, count);
             double bps = speedOnce(p);
             if (bps > fastestBps) {
                 fastestBps = bps;

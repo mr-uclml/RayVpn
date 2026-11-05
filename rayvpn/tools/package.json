@@ -1,0 +1,6 @@
+{
+  "name": "rayvpn-tools",
+  "private": true,
+  "type": "module",
+  "description": "APK signature scheme v2 helper used by tools/build.sh"
+}
